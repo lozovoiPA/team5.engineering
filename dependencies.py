@@ -6,18 +6,27 @@ import os
 import json
 from pathlib import Path
 
-# Define the folder and file name
-
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 class Dependencies:
     def __init__(self):
-        load_dotenv()
+        parent_folder = resource_path(Path(__file__).resolve().parent)
+        print(parent_folder)
         
-        folder = Path(__file__).resolve().parent
-        config_path = folder / Path("data/config")
+        dotenv_path = parent_folder / Path(".env")
+        print(dotenv_path)
+        load_dotenv(dotenv_path)
+        
+        config_path = parent_folder / Path("data/config")
         models = config_path / "models.json"
         with models.open('r', encoding='utf-8') as file:
             self.model_config = json.load(file)
+            print(self.model_config)
 
     def get_model(self):
         model = Model()

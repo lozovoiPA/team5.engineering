@@ -4,5 +4,5 @@ class Result:
     
 class ErrorResult(Result):
     def __init__(self, error_text):
-        super.__init__("ErrorResult")
+        super().__init__("ErrorResult")
         self.error_text = error_text
