@@ -1,40 +1,53 @@
-import tkinter as tk
-import threading
-import keyboard
-import sys
+import customtkinter as ctk
 from services.screen_text_listener import ScreenTextListener
+from services.uiworker import UiWorker
+from services.modelworker import ModelWorker
+from services.meeting_generation.modelfactory import ModelFactory
+from dependencies import Dependencies
+import threading
+from entities.Meeting import Meeting
+
 
 class App:
     def __init__(self):
-        self.root = tk.Tk()
+        self.root = ctk.CTk()
         self.root.withdraw()
-        
+
+        self.dependencies = Dependencies()
+        self.uiworker = UiWorker(self.root, self.dependencies)
         self.text_listener = ScreenTextListener()
-        threading.Thread(target=self.program_exit).start() # по сути потом не будет, но пока чтобы можно было закрыть в консоли
 
-        # вместо этого ниже подставляем ModelWorker
-        self.text_listener.launch(self.print_text)
+        self.text_listener.launch(self.catch_text_from_daemon)
 
-    def print_text(self, text):
+    def launch(self):
+        self.uiworker.show_main_window()
+
+    def catch_text_from_daemon(self, text):
+        self.root.after(0, lambda: self.create_meeting_from_text(text))
+
+    def create_meeting_from_text(self, text):
         print(text[0:300])
 
-    def program_exit(self):
-        try:
-            keyboard.wait('esc')
-        except KeyboardInterrupt:
-            pass
-        finally:
-            self.root.after(0, self.program_shutdown)
+        def background_work():
+            model = self.dependencies.get_model()
+            factory = ModelFactory()
+            toolcalls = self.dependencies.get_toolcalls()
+            tools = self.dependencies.get_tools()
+
+            mw = ModelWorker(model, factory, toolcalls, tools)
+            result = mw.create_meeting_from_text(text[0:300])
+            self.root.after(0, lambda: self.update_ui_with_result(result))
+
+        thread = threading.Thread(target=background_work)
+        thread.start()
+
+    def update_ui_with_result(self, result):
+        if isinstance(result, Meeting):
+            self.uiworker.show_meeting_window_with_prefill(result)
+        else:
+            self.uiworker.show_meeting_window()
 
     def program_shutdown(self):
         print("App shutting down.")
-        keyboard.unhook_all()
         self.text_listener.stop()
         self.root.destroy()
-
-if __name__ == "__main__":
-    app = App()
-    print("App started.")
-
-    app.root.mainloop()
-    

@@ -15,7 +15,6 @@ class ScreenTextListener:
     def launch(self, f):
         keyboard.add_hotkey(self.hotkey, self.get_selected_text)
         self.pass_to = f
-        
         self.thread = threading.Thread(target=self.listen, daemon=True)
         self.thread.start()
 
@@ -26,15 +25,17 @@ class ScreenTextListener:
         original_clipboard = pyperclip.paste()
 
         time.sleep(0.1)
-        with pyautogui.hold('ctrl'):
-            time.sleep(0.1)
-            pyautogui.press('c')
+        pyautogui.keyDown('ctrl')
+        time.sleep(0.05)
+        pyautogui.press('c')
+        time.sleep(0.05)
+        pyautogui.keyUp('ctrl')
 
         selected_text = pyperclip.paste()
-        print(len(selected_text))
+        print(f"Selected text length: {len(selected_text)}")
         pyperclip.copy(original_clipboard)
 
-        threading.Thread(target = self.pass_to(selected_text)).start()
+        threading.Thread(target=lambda: self.pass_to(selected_text)).start()
 
     def stop(self):
         keyboard.unhook_all()
