@@ -1,0 +1,5 @@
+{
+	"model_name": "gpt-4o-mini",
+	"connect_string": "https://api.aitunnel.ru/v1",
+	"connect_token": "API_TOKEN"
+}

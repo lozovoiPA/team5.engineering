@@ -2,7 +2,7 @@ import customtkinter as ctk
 from services.screen_text_listener import ScreenTextListener
 from services.uiworker import UiWorker
 from services.modelworker import ModelWorker
-from services.model.modelfactory import ModelFactory
+from services.meeting_generation.modelfactory import ModelFactory
 from dependencies import Dependencies
 import threading
 from entities.Meeting import Meeting
@@ -35,7 +35,7 @@ class App:
             tools = self.dependencies.get_tools()
 
             mw = ModelWorker(model, factory, toolcalls, tools)
-            result = mw.create_meeting_from_text(text)
+            result = mw.create_meeting_from_text(text[0:300])
             self.root.after(0, lambda: self.update_ui_with_result(result))
 
         thread = threading.Thread(target=background_work)
