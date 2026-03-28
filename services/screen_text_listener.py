@@ -6,7 +6,6 @@ import time
 
 pyautogui.PAUSE = 0.1
 
-
 class ScreenTextListener:
     def __init__(self):
         self.thread = None
@@ -16,7 +15,6 @@ class ScreenTextListener:
     def launch(self, f):
         keyboard.add_hotkey(self.hotkey, self.get_selected_text)
         self.pass_to = f
-
         self.thread = threading.Thread(target=self.listen, daemon=True)
         self.thread.start()
 
@@ -27,7 +25,6 @@ class ScreenTextListener:
         original_clipboard = pyperclip.paste()
 
         time.sleep(0.1)
-
         pyautogui.keyDown('ctrl')
         time.sleep(0.05)
         pyautogui.press('c')
