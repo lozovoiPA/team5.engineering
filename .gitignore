@@ -5,5 +5,5 @@ __pycache__/
 .idea/
 build/
 dist/
-.spec
-"модели.txt"
+*.spec
+модели.txt
