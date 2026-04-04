@@ -1,25 +1,24 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from data.entities.meeting import Meeting
-from views.MeetingWindow import MeetingWindow
+from ui.view_models.main_window_view_model import MainWindowViewModel
+from ui.views.meeting_window import MeetingWindow
 from datetime import datetime
 
 
 class MainWindow(ctk.CTkToplevel):
-    def __init__(self, root, on_auto_generate=None):
+    def __init__(self, root, repository, on_auto_generate=None):
         super().__init__(root)
         self.title("Meeting Planner")
         self.geometry("860x620")
         self.minsize(720, 500)
 
+        self.view_model = MainWindowViewModel(repository)
+
         self.on_auto_generate = on_auto_generate
 
-        self.meetings = [
-            Meeting("Встреча по ML", "22.04.2026", "13:35", id=1),
-            Meeting("Встреча по LLM", "22.04.2026", "12:35", is_important=True, id=2),
-            Meeting("Встреча 1", "22.04.2026", "11:35", id=3),
-            Meeting("Встреча 2", "22.04.2026", "13:35", id=4),
-        ]
+        self.view_model.get_meetings()
+        self.meetings = self.view_model.meetings
 
         self._build_ui()
 
@@ -56,7 +55,8 @@ class MainWindow(ctk.CTkToplevel):
                                             values=["Ближайшие", "На день", "На неделю", "Важные"],
                                             variable=self.filter_var, width=140, height=32,
                                             fg_color="#f5f5f5", border_color="#cccccc",
-                                            command=self._on_filter_change)
+                                            command=self._on_filter_change,
+                                            state="readonly")
         self.filter_combo.pack(side="left")
 
         right_part = ctk.CTkFrame(filter_frame, fg_color="transparent")
@@ -132,6 +132,16 @@ class MainWindow(ctk.CTkToplevel):
 
         filtered_meetings = self._get_filtered_meetings()
         self.count_label.configure(text=f"{len(filtered_meetings)} встречи")
+
+        if self.view_model.error_display:
+            empty_label = ctk.CTkLabel(
+                self.scroll_frame,
+                text=self.view_model.error_text,
+                font=ctk.CTkFont(size=14),
+                text_color="#EE1010"
+            )
+            empty_label.pack(expand=True, pady=50)
+            return
 
         if not filtered_meetings:
             empty_label = ctk.CTkLabel(

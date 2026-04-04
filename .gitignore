@@ -8,3 +8,4 @@ dist/
 *.spec
 модели.txt
 .vscode/
+*.db

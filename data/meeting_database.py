@@ -15,6 +15,12 @@ class MeetingDb(base):
 
 
 class MeetingDatabase:
-    def __init__(self):
-        self.engine = create_engine('sqlite:///localStorage.db')
+    def __init__(self, path):
+        self.engine = create_engine(f'sqlite:///{path}')
         base.metadata.create_all(self.engine)
+
+    def execute_query(self, query):
+        result = None
+        with sessionmaker(bind=self.engine).begin() as session:
+            result = query(session)
+        return result

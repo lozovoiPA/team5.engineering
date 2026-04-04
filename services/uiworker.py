@@ -1,5 +1,5 @@
-from views.MainWindow import MainWindow
-from views.MeetingWindow import MeetingWindow
+from ui.views import MainWindow
+from ui.views import MeetingWindow
 
 
 class UiWorker:
@@ -9,7 +9,7 @@ class UiWorker:
         self.main_window = None
 
     def show_main_window(self):
-        self.main_window = MainWindow(self.root, on_auto_generate=self.on_auto_generate)
+        self.main_window = MainWindow(self.root, self.dependencies.meetings_repo, on_auto_generate=self.on_auto_generate)
         self.main_window.deiconify()
         return self.main_window
 
