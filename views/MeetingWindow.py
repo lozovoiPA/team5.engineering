@@ -1,6 +1,6 @@
 import customtkinter as ctk
 from tkinter import messagebox
-from entities.Meeting import Meeting
+from data.entities import meeting
 from datetime import datetime, timedelta
 
 

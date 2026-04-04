@@ -1,8 +1,8 @@
 import json
 from openai import OpenAI
 from datetime import date, timedelta
-from entities.Meeting import Meeting
-from entities.prompt import Prompt
+from data.entities import meeting
+from data.entities import Prompt
 import services.result as results
 
 
