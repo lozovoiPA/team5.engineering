@@ -9,5 +9,6 @@ if __name__ == "__main__":
     
     app = App()
     app.launch()
-    
+
+    app.root.after(100, lambda: None)
     app.root.mainloop()
