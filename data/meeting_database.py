@@ -1,4 +1,6 @@
-from sqlalchemy import create_engine, Column, Integer, String, Boolean
+from datetime import datetime
+
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 base = declarative_base()
@@ -6,12 +8,11 @@ base = declarative_base()
 
 class MeetingDb(base):
     __tablename__ = 'meetings'
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    time = Column(String)
-    date = Column(String)
-    description = Column(String)
-    priority = Column(Boolean)
+    id: int = Column(Integer, primary_key=True)
+    name: str = Column(String)
+    timestamp: datetime = Column(DateTime)
+    description: str = Column(String)
+    priority: bool = Column(Boolean)
 
 
 class MeetingDatabase:

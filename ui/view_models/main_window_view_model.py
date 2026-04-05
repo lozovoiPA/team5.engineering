@@ -1,5 +1,8 @@
+from tkinter import messagebox
+
 from data.repositories.meeting_repository import MeetingRepository
 from services.result import ErrorResult, MeetingsRetrieved
+from datetime import datetime
 
 
 class MainWindowViewModel:
@@ -7,6 +10,7 @@ class MainWindowViewModel:
         self.repository = repository
 
         self.meetings = []
+        self.display_meetings = []
 
         self.error_display = False
         self.error_text = ""
@@ -23,9 +27,54 @@ class MainWindowViewModel:
 
         elif isinstance(result, MeetingsRetrieved):
             self.meetings = result.meetings
+            self.display_meetings = self.meetings
         else:
             self.error_display = True
             self.error_text = "Неизвестная ошибка"
             self.error_log = ""
 
             print(self.error_log)
+
+    def filter_meetings(self, filter_type):
+        current_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+        filtered = []
+        if filter_type == "Все":
+            filtered = self.meetings
+        else:
+            for meeting in self.meetings:
+                try:
+                    meeting_date = datetime.strptime(meeting.date, "%d.%m.%Y")
+                    meeting_date = meeting_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                    days_diff = (meeting_date - current_date).days
+
+                    if filter_type == "Ближайшие":
+                        if 0 <= days_diff < 3:
+                            filtered.append(meeting)
+                    elif filter_type == "На день":
+                        if days_diff == 0:
+                            filtered.append(meeting)
+                    elif filter_type == "На неделю":
+                        if 0 <= days_diff <= 7:
+                            filtered.append(meeting)
+                    elif filter_type == "Важные":
+                        if meeting.is_important:
+                            filtered.append(meeting)
+                except Exception as e:
+                    print(f"Ошибка парсинга даты {meeting.date}: {e}")
+                    filtered.append(meeting)
+
+        try:
+            filtered.sort(key=lambda m: (
+                datetime.strptime(m.date, "%d.%m.%Y") if m.date else datetime.max,
+                m.time if m.time else "23:59"
+            ))
+            self.display_meetings = filtered
+        except Exception as e:
+            print(f"{e}")
+
+    def delete_meeting(self, meeting):
+        if messagebox.askyesno("Удаление", f"Удалить встречу «{meeting.title}»?"):
+            self.meetings = [m for m in self.meetings if m.id != meeting.id]
+            self.display_meetings = [m for m in self.display_meetings if m.id != meeting.id]
+            

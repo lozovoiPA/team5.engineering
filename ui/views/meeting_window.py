@@ -3,6 +3,8 @@ from tkinter import messagebox
 from data.entities import meeting
 from datetime import datetime, timedelta
 
+from data.entities.meeting import Meeting
+
 
 class MeetingWindow(ctk.CTkToplevel):
     def __init__(self, parent, on_create, prefill_meeting=None):

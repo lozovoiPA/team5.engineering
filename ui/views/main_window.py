@@ -3,7 +3,6 @@ from tkinter import messagebox
 from data.entities.meeting import Meeting
 from ui.view_models.main_window_view_model import MainWindowViewModel
 from ui.views.meeting_window import MeetingWindow
-from datetime import datetime
 
 
 class MainWindow(ctk.CTkToplevel):
@@ -52,17 +51,18 @@ class MainWindow(ctk.CTkToplevel):
 
         self.filter_var = ctk.StringVar(value="Ближайшие")
         self.filter_combo = ctk.CTkComboBox(filter_frame,
-                                            values=["Ближайшие", "На день", "На неделю", "Важные"],
+                                            values=["Ближайшие", "На день", "На неделю", "Важные", "Все"],
                                             variable=self.filter_var, width=140, height=32,
                                             fg_color="#f5f5f5", border_color="#cccccc",
                                             command=self._on_filter_change,
                                             state="readonly")
+        self.view_model.filter_meetings("Ближайшие")
         self.filter_combo.pack(side="left")
 
         right_part = ctk.CTkFrame(filter_frame, fg_color="transparent")
         right_part.pack(side="right", padx=20, pady=8)
 
-        self.count_label = ctk.CTkLabel(right_part, text=f"{len(self.meetings)} встречи",
+        self.count_label = ctk.CTkLabel(right_part, text=f"{len(self.view_model.display_meetings)} встречи",
                                         text_color="#555555", font=ctk.CTkFont(size=14))
         self.count_label.pack(side="right")
 
@@ -87,53 +87,17 @@ class MainWindow(ctk.CTkToplevel):
         messagebox.showinfo("Создано", f"Встреча «{meeting.title}» добавлена")
 
     def _on_filter_change(self, choice):
+        self.view_model.filter_meetings(choice)
         self._render_meetings()
-
-    def _get_filtered_meetings(self):
-        current_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        filter_type = self.filter_var.get()
-
-        filtered = []
-        for meeting in self.meetings:
-            try:
-                meeting_date = datetime.strptime(meeting.date, "%d.%m.%Y")
-                meeting_date = meeting_date.replace(hour=0, minute=0, second=0, microsecond=0)
-                days_diff = (meeting_date - current_date).days
-
-                if filter_type == "Ближайшие":
-                    if days_diff >= 0:
-                        filtered.append(meeting)
-                elif filter_type == "На день":
-                    if days_diff == 0:
-                        filtered.append(meeting)
-                elif filter_type == "На неделю":
-                    if 0 <= days_diff <= 7:
-                        filtered.append(meeting)
-                elif filter_type == "Важные":
-                    if meeting.is_important:
-                        filtered.append(meeting)
-            except Exception as e:
-                print(f"Ошибка парсинга даты {meeting.date}: {e}")
-                filtered.append(meeting)
-
-        try:
-            filtered.sort(key=lambda m: (
-                datetime.strptime(m.date, "%d.%m.%Y") if m.date else datetime.max,
-                m.time if m.time else "23:59"
-            ))
-        except:
-            pass
-
-        return filtered
 
     def _render_meetings(self):
         for w in self.scroll_frame.winfo_children():
             w.destroy()
 
-        filtered_meetings = self._get_filtered_meetings()
-        self.count_label.configure(text=f"{len(filtered_meetings)} встречи")
+        filtered_meetings = self.view_model.display_meetings
 
         if self.view_model.error_display:
+            self.count_label.configure(text=f"")
             empty_label = ctk.CTkLabel(
                 self.scroll_frame,
                 text=self.view_model.error_text,
@@ -144,6 +108,7 @@ class MainWindow(ctk.CTkToplevel):
             return
 
         if not filtered_meetings:
+            self.count_label.configure(text=f"")
             empty_label = ctk.CTkLabel(
                 self.scroll_frame,
                 text="Нет встреч в выбранном периоде",
@@ -153,6 +118,7 @@ class MainWindow(ctk.CTkToplevel):
             empty_label.pack(expand=True, pady=50)
             return
 
+        self.count_label.configure(text=f"{len(filtered_meetings)} встречи")
         for m in filtered_meetings:
             card = ctk.CTkFrame(self.scroll_frame, corner_radius=10, fg_color="#f8f8f8",
                                 border_width=1, border_color="#e0e0e0")
@@ -237,6 +203,5 @@ class MainWindow(ctk.CTkToplevel):
         messagebox.showinfo("Обновлено", f"Встреча «{updated_meeting.title}» обновлена")
 
     def _delete_meeting(self, meeting):
-        if messagebox.askyesno("Удаление", f"Удалить встречу «{meeting.title}»?"):
-            self.meetings = [m for m in self.meetings if m.id != meeting.id]
-            self._render_meetings()
+        self.view_model.delete_meeting(meeting)
+        self._render_meetings()

@@ -1,5 +1,5 @@
-from sqlalchemy import Engine, select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select
+from datetime import datetime
 
 from services.result import MeetingsRetrieved, ErrorResult, MeetingsCreated
 from ..entities.meeting import Meeting
@@ -10,8 +10,8 @@ def meeting_to_db(meeting: Meeting):
     meeting_db = MeetingDb()
     meeting_db.name = meeting.title
     meeting_db.priority = meeting.is_important
-    meeting_db.date = meeting.date
-    meeting_db.time = meeting.time
+    meeting_db.timestamp = datetime.strptime(meeting.date + ' ' + meeting.time,
+                                             '%d.%m.%Y %H:%M')
     meeting_db.description = meeting.description
     meeting_db.id = meeting.id
     return meeting_db
@@ -21,8 +21,8 @@ def meeting_from_db(meeting_db: MeetingDb):
     meeting = Meeting()
     meeting.title = meeting_db.name
     meeting.is_important = meeting_db.priority
-    meeting.date = meeting_db.date
-    meeting.time = meeting_db.time
+    meeting.date = meeting_db.timestamp.date().strftime("%d.%m.%Y")
+    meeting.time = meeting_db.timestamp.time().strftime("%H:%M")
     meeting.description = meeting_db.description
     meeting.id = meeting_db.id
     return meeting
