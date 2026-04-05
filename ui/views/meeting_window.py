@@ -4,14 +4,18 @@ from data.entities import meeting
 from datetime import datetime, timedelta
 
 from data.entities.meeting import Meeting
+from data.repositories.meeting_repository import MeetingRepository
+from ui.view_models.meeting_window_view_model import MeetingWindowViewModel
 
 
 class MeetingWindow(ctk.CTkToplevel):
-    def __init__(self, parent, on_create, prefill_meeting=None):
+    def __init__(self, parent, on_create, repository: MeetingRepository, prefill_meeting=None):
         super().__init__(parent)
 
         self.on_create = on_create
         self.prefill_meeting = prefill_meeting
+
+        self.view_model = MeetingWindowViewModel(repository)
 
         self.is_edit_mode = (
                 prefill_meeting is not None and
@@ -169,4 +173,9 @@ class MeetingWindow(ctk.CTkToplevel):
             )
 
         self.on_create(meeting)
+
+        # Проверка коллизий (через вьюмодель)
+        # Если есть коллизия (окно - 1 час) - вывод в логи
+        self.view_model.check_collisions(meeting)
+
         self.destroy()

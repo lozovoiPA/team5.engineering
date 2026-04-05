@@ -92,3 +92,6 @@ class MainWindowViewModel:
                     self.display_meetings.remove(meeting)
             else:
                 print("Unknown error in MainWindowViewModel.delete_meeting()")
+
+    def toggle_importance(self, meeting):
+        meeting.is_important = not meeting.is_important

@@ -1,3 +1,6 @@
+from data.entities.meeting import Meeting
+
+
 class Result:
     def __init__(self, _type):
         self._type = _type
@@ -17,7 +20,7 @@ class MeetingsCreated(Result):
 class MeetingsRetrieved(Result):
     def __init__(self, meetings):
         super().__init__("meetings_retrieved")
-        self.meetings = meetings
+        self.meetings: list[Meeting] = meetings
 
 
 class MeetingsDeleted(Result):

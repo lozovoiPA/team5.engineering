@@ -1,3 +1,6 @@
+import datetime
+from datetime import timedelta
+
 from ..data_sources.meeting_local_data_source import MeetingLocalDataSource
 from ..entities.meeting import Meeting
 
@@ -16,4 +19,10 @@ class MeetingRepository:
 
     def delete_meeting(self, meeting):
         result = self.meetings_local.delete_meeting(meeting)
+        return result
+
+    def check_collision(self, meeting: Meeting, delta: timedelta):
+        timestamp = datetime.datetime.strptime(meeting.date + ' ' + meeting.time, '%d.%m.%Y %H:%M')
+        result = self.meetings_local.check_collisions(timestamp, delta)
+
         return result

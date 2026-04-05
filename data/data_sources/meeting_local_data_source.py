@@ -1,5 +1,5 @@
-from sqlalchemy import select
-from datetime import datetime
+from sqlalchemy import select, and_
+from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -61,6 +61,25 @@ class MeetingLocalDataSource:
         except Exception as e:
             return ErrorResult(f'''
             Exception in MeetingLocalDataSource.get_meetings();
+            {e}
+            ''')
+
+    def check_collisions(self, timestamp: datetime, delta: timedelta):
+        def _query(session):
+            _meetings = [meeting_from_db(meeting_db) for meeting_db
+                         in session.query(MeetingDb)
+                         .filter(and_(MeetingDb.timestamp >= timestamp - delta,
+                                      MeetingDb.timestamp <= timestamp + delta))
+                         .all()]
+            return _meetings
+
+        try:
+            print(f"timestamp: {timestamp}, min timestamp: {timestamp - delta}, max timestamp: {timestamp + delta}")
+            meetings = self.db.execute_query(_query)
+            return MeetingsRetrieved(meetings)
+        except Exception as e:
+            return ErrorResult(f'''
+            Exception in MeetingLocalDataSource.check_collisions();
             {e}
             ''')
 

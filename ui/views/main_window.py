@@ -1,3 +1,5 @@
+from idlelib.tooltip import Hovertip
+
 import customtkinter as ctk
 from tkinter import messagebox
 from data.entities.meeting import Meeting
@@ -101,7 +103,7 @@ class MainWindow(ctk.CTkToplevel):
             self.on_auto_generate()
 
     def _open_create_window(self):
-        MeetingWindow(self, on_create=self._on_meeting_created)
+        MeetingWindow(self, repository=self.view_model.repository, on_create=self._on_meeting_created)
 
     def _on_meeting_created(self, meeting: Meeting):
         if not meeting.id or meeting.id == 0:
@@ -195,13 +197,15 @@ class MainWindow(ctk.CTkToplevel):
 
         (ctk.CTkLabel(datetime_frame, text="📅", font=ctk.CTkFont(size=14))
          .pack(side="left", padx=(0, 4), pady=(0, 4)))
-        ctk.CTkLabel(datetime_frame, text=m.date, text_color="#555555", font=ctk.CTkFont(size=13)) \
-            .pack(side="left", padx=(0, 12))
+        date_label = ctk.CTkLabel(datetime_frame, text=m.date, text_color="#555555", font=ctk.CTkFont(size=13))
+        date_label.pack(side="left", padx=(0, 12))
+        Hovertip(date_label, "Дата встречи", hover_delay=300)
 
         (ctk.CTkLabel(datetime_frame, text="🕒", font=ctk.CTkFont(size=14))
          .pack(side="left", padx=(0, 4), pady=(0, 4)))
-        ctk.CTkLabel(datetime_frame, text=m.time, text_color="#555555", font=ctk.CTkFont(size=13)) \
-            .pack(side="left", padx=(0, 12))
+        time_label = ctk.CTkLabel(datetime_frame, text=m.time, text_color="#555555", font=ctk.CTkFont(size=13))
+        time_label.pack(side="left", padx=(0, 12))
+        Hovertip(time_label, "Время встречи", hover_delay=300)
 
         actions_frame = ctk.CTkFrame(right_frame, fg_color="transparent")
         actions_frame.pack(side="left", padx=(16, 0))
@@ -214,6 +218,7 @@ class MainWindow(ctk.CTkToplevel):
             command=lambda meeting=m: self._toggle_importance(meeting),
             anchor="center"
         )
+        Hovertip(star_btn, "Снять отметку" if m.is_important else "Отметить важной", hover_delay=300)
         star_btn.pack(side="left", padx=1)
 
         edit_btn = ctk.CTkButton(
@@ -223,15 +228,17 @@ class MainWindow(ctk.CTkToplevel):
             command=lambda meeting=m: self._edit_meeting(meeting),
             anchor="center"
         )
+        Hovertip(edit_btn, "Редактировать встречу", hover_delay=300)
         edit_btn.pack(side="left", padx=1)
 
         delete_btn = ctk.CTkButton(
             actions_frame, text="X", width=28, height=28, corner_radius=14,
-            fg_color="transparent", hover_color="#e0f0ff",
+            fg_color="transparent", hover_color="#ffe5e5",
             text_color="#888888",
             command=lambda meeting=m: self._delete_meeting(meeting),
             anchor="center"
         )
+        Hovertip(delete_btn, "Отменить встречу", hover_delay=300)
         delete_btn.pack(side="left", padx=1)
 
         if m.description:
@@ -248,10 +255,8 @@ class MainWindow(ctk.CTkToplevel):
         ctk.CTkFrame(card, height=4, fg_color="transparent").pack(fill="x", pady=(0, 8))
 
     def _toggle_importance(self, meeting):
-        meeting.is_important = not meeting.is_important
+        self.view_model.toggle_importance(meeting)
         self._render_meetings()
-        status = "важной" if meeting.is_important else "обычной"
-        messagebox.showinfo("Важность", f"Встреча «{meeting.title}» отмечена как {status}")
 
     def _edit_meeting(self, meeting):
         MeetingWindow(self, on_create=self._on_meeting_edited, prefill_meeting=meeting)
