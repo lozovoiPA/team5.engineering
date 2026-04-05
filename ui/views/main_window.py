@@ -12,6 +12,12 @@ class MainWindow(ctk.CTkToplevel):
         self.geometry("860x620")
         self.minsize(720, 500)
 
+        # Double buffering
+        self.form = ctk.CTkFrame(self, fg_color="transparent")
+        self.buffer = ctk.CTkFrame(self, fg_color="transparent")
+        self.form.place(relx=0, rely=0, relwidth=1.0, relheight=1.0)
+        self.buffer.place(relx=0, rely=0, relwidth=1.0, relheight=1.0)
+
         self.view_model = MainWindowViewModel(repository)
 
         self.on_auto_generate = on_auto_generate
@@ -22,7 +28,10 @@ class MainWindow(ctk.CTkToplevel):
         self._build_ui()
 
     def _build_ui(self):
-        top_frame = ctk.CTkFrame(self, fg_color="white", corner_radius=0, height=56)
+        for child in self.buffer.winfo_children():
+            child.destroy()
+
+        top_frame = ctk.CTkFrame(self.buffer, fg_color="white", corner_radius=0, height=56)
         top_frame.pack(fill="x")
 
         ctk.CTkLabel(top_frame, text="Meeting Planner", text_color="black",
@@ -43,33 +52,41 @@ class MainWindow(ctk.CTkToplevel):
                       text_color="white", command=self._open_create_window) \
             .pack(side="left")
 
-        filter_frame = ctk.CTkFrame(self, fg_color="#e0e0e0", corner_radius=0, height=40)
+        self.main_frame = ctk.CTkFrame(self.buffer, fg_color="transparent")
+        self.main_frame.pack(fill="both", expand=True)
+        self.meetings_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.meetings_buffer = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.meetings_frame.place(relx=0, rely=0, relwidth=1.0, relheight=1.0)
+        self.meetings_buffer.place(relx=0, rely=0, relwidth=1.0, relheight=1.0)
+
+        self.filter_var = ctk.StringVar(value="Ближайшие")
+        self._on_filter_change("Ближайшие")
+
+        self.form, self.buffer = (self.buffer, self.form)
+        self.update_idletasks()
+        self.form.tkraise(self.buffer)
+
+    def _build_filter_frame(self):
+        filter_frame = ctk.CTkFrame(self.meetings_buffer, fg_color="#e0e0e0", corner_radius=0, height=40)
         filter_frame.pack(fill="x")
 
         ctk.CTkLabel(filter_frame, text="Показать:", text_color="#333333") \
             .pack(side="left", padx=10, pady=30)
 
-        self.filter_var = ctk.StringVar(value="Ближайшие")
         self.filter_combo = ctk.CTkComboBox(filter_frame,
                                             values=["Ближайшие", "На день", "На неделю", "Важные", "Все"],
                                             variable=self.filter_var, width=140, height=32,
                                             fg_color="#f5f5f5", border_color="#cccccc",
                                             command=self._on_filter_change,
                                             state="readonly")
-        self.view_model.filter_meetings("Ближайшие")
         self.filter_combo.pack(side="left")
 
         right_part = ctk.CTkFrame(filter_frame, fg_color="transparent")
         right_part.pack(side="right", padx=20, pady=8)
 
-        self.count_label = ctk.CTkLabel(right_part, text=f"{len(self.view_model.display_meetings)} встречи",
+        self.count_label = ctk.CTkLabel(right_part, text=f"",
                                         text_color="#555555", font=ctk.CTkFont(size=14))
         self.count_label.pack(side="right")
-
-        self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
-        self.scroll_frame.pack(fill="both", expand=True, padx=20, pady=(0, 16))
-
-        self._render_meetings()
 
     def _on_auto_generate(self):
         if self.on_auto_generate:
@@ -91,10 +108,19 @@ class MainWindow(ctk.CTkToplevel):
         self._render_meetings()
 
     def _render_meetings(self):
-        for w in self.scroll_frame.winfo_children():
-            w.destroy()
+        for child in self.meetings_buffer.winfo_children():
+            child.destroy()
+
+        self._build_filter_frame()
+        self.scroll_frame = ctk.CTkScrollableFrame(self.meetings_buffer, fg_color="transparent")
+        self.scroll_frame.pack(fill="both", expand=True, padx=20, pady=(0, 16))
 
         filtered_meetings = self.view_model.display_meetings
+
+        def update_frame():
+            self.meetings_frame, self.meetings_buffer = (self.meetings_buffer, self.meetings_frame)
+            self.update_idletasks()
+            self.meetings_frame.tkraise(self.meetings_buffer)
 
         if self.view_model.error_display:
             self.count_label.configure(text=f"")
@@ -105,6 +131,7 @@ class MainWindow(ctk.CTkToplevel):
                 text_color="#EE1010"
             )
             empty_label.pack(expand=True, pady=50)
+            update_frame()
             return
 
         if not filtered_meetings:
@@ -116,6 +143,7 @@ class MainWindow(ctk.CTkToplevel):
                 text_color="#999999"
             )
             empty_label.pack(expand=True, pady=50)
+            update_frame()
             return
 
         self.count_label.configure(text=f"{len(filtered_meetings)} встречи")
@@ -184,6 +212,8 @@ class MainWindow(ctk.CTkToplevel):
                 desc_label.pack(fill="x", padx=16, pady=(0, 8))
 
             ctk.CTkFrame(card, height=4, fg_color="transparent").pack(fill="x", pady=(0, 8))
+        update_frame()
+
 
     def _toggle_importance(self, meeting):
         meeting.is_important = not meeting.is_important
