@@ -1,3 +1,5 @@
+import datetime
+
 from data.data_sources.meeting_local_data_source import MeetingLocalDataSource
 from data.entities import Model
 
@@ -53,11 +55,26 @@ class Dependencies:
         return model
 
     def test_db_init(self):
+        today = datetime.datetime.now()
+        today_meet = (today + datetime.timedelta(hours=1))
+        tomorrow_meet = today + datetime.timedelta(days=1)
+        after_tomorrow_meet = today + datetime.timedelta(days=2)
+
+        today_meet_date = today_meet.strftime("%d.%m.%Y")
+        tomorrow_meet_date = tomorrow_meet.strftime("%d.%m.%Y")
+        after_tomorrow_meet_date = after_tomorrow_meet.strftime("%d.%m.%Y")
+
+        today_meet_time = today_meet.strftime("%H:%M")
+        tomorrow_meet_time = tomorrow_meet.strftime("%H:%M")
+        after_tomorrow_meet_time = after_tomorrow_meet.strftime("%H:%M")
         meetings = [
             Meeting("Встреча по ML", "22.04.2026", "13:35", id=1),
             Meeting("Встреча по LLM", "22.04.2026", "12:35", is_important=True, id=2),
             Meeting("Встреча 1", "22.04.2026", "11:35", id=3),
             Meeting("Встреча 2", "22.04.2026", "13:35", id=4),
+            Meeting("Встреча сегодня", today_meet_date, today_meet_time, id=5),
+            Meeting("Встреча завтра", tomorrow_meet_date, tomorrow_meet_time, id=6),
+            Meeting("Встреча послезавтра", after_tomorrow_meet_date, after_tomorrow_meet_time, id=7)
         ]
         for m in meetings:
             self.meetings_repo.save_meeting(m)

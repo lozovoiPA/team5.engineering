@@ -16,6 +16,10 @@ class MainWindowViewModel:
         self.error_text = ""
         self.error_log = ""
 
+        self.filter = ""
+        self.loading = False
+        self.loader_angle = 0
+
     def get_meetings(self):
         result = self.repository.get_meetings()
 
@@ -37,6 +41,9 @@ class MainWindowViewModel:
             print(self.error_log)
 
     def filter_meetings(self, filter_type):
+        if self.filter == filter_type:
+            return
+        self.filter = filter_type
         current_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
         filtered = []
