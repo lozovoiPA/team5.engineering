@@ -13,3 +13,7 @@ class MeetingRepository:
     def get_meetings(self):
         result = self.meetings_local.get_meetings()
         return result
+
+    def delete_meeting(self, meeting):
+        result = self.meetings_local.delete_meeting(meeting)
+        return result

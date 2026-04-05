@@ -18,3 +18,13 @@ class MeetingsRetrieved(Result):
     def __init__(self, meetings):
         super().__init__("meetings_retrieved")
         self.meetings = meetings
+
+
+class MeetingsDeleted(Result):
+    def __init__(self):
+        super().__init__("meetings_deleted")
+
+
+class MeetingsUpdated(Result):
+    def __init__(self):
+        super().__init__("meetings_updated")

@@ -1,7 +1,7 @@
 from tkinter import messagebox
 
 from data.repositories.meeting_repository import MeetingRepository
-from services.result import ErrorResult, MeetingsRetrieved
+from services.result import ErrorResult, MeetingsRetrieved, MeetingsDeleted
 from datetime import datetime
 
 
@@ -18,6 +18,7 @@ class MainWindowViewModel:
 
     def get_meetings(self):
         result = self.repository.get_meetings()
+
         if isinstance(result, ErrorResult):
             self.error_display = True
             self.error_text = "Ошибка: не удалось найти встречи"
@@ -75,6 +76,12 @@ class MainWindowViewModel:
 
     def delete_meeting(self, meeting):
         if messagebox.askyesno("Удаление", f"Удалить встречу «{meeting.title}»?"):
-            self.meetings = [m for m in self.meetings if m.id != meeting.id]
-            self.display_meetings = [m for m in self.display_meetings if m.id != meeting.id]
-            
+            result = self.repository.delete_meeting(meeting)
+            if isinstance(result, ErrorResult):
+                print(result.error_text)
+            elif isinstance(result, MeetingsDeleted):
+                self.meetings.remove(meeting)
+                if meeting in self.display_meetings:
+                    self.display_meetings.remove(meeting)
+            else:
+                print("Unknown error in MainWindowViewModel.delete_meeting()")

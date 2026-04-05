@@ -1,7 +1,9 @@
 from sqlalchemy import select
 from datetime import datetime
 
-from services.result import MeetingsRetrieved, ErrorResult, MeetingsCreated
+from sqlalchemy.orm import Session
+
+from services.result import MeetingsRetrieved, ErrorResult, MeetingsCreated, MeetingsDeleted
 from ..entities.meeting import Meeting
 from ..meeting_database import MeetingDb, MeetingDatabase
 
@@ -61,3 +63,20 @@ class MeetingLocalDataSource:
             Exception in MeetingLocalDataSource.get_meetings();
             {e}
             ''')
+
+    def delete_meeting(self, meeting):
+        def query(session: Session):
+            meeting_db = session.get(MeetingDb, meeting.id)
+            if meeting_db is None:
+                return ErrorResult("Meeting not found")
+            session.delete(meeting_db)
+            return MeetingsDeleted()
+
+        try:
+            result = self.db.execute_query(query)
+            return result
+        except Exception as e:
+            return ErrorResult(f'''
+                        Exception in MeetingLocalDataSource.delete_meeting();
+                        {e}
+                        ''')

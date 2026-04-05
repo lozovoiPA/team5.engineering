@@ -10,6 +10,7 @@ import sys
 from data.entities.meeting import Meeting
 from data.meeting_database import MeetingDatabase
 from data.repositories.meeting_repository import MeetingRepository
+from services.result import MeetingsRetrieved
 
 
 def resource_path(relative_path):
@@ -39,7 +40,10 @@ class Dependencies:
         self.meetings_local_data_source = MeetingLocalDataSource(self.meetings_db)
         self.meetings_repo = MeetingRepository(self.meetings_local_data_source)
 
-        self.test_db_init()
+        # Создание заглушек встреч (убрать на релизе)
+        res = self.meetings_local_data_source.get_meetings()
+        if isinstance(res, MeetingsRetrieved) and len(res.meetings) <= 1:
+            self.test_db_init()
 
     def get_model(self):
         model = Model()
