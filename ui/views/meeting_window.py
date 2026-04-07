@@ -96,8 +96,8 @@ class MeetingWindow(ctk.CTkToplevel):
         btn_frame.pack(side="right", padx=32, pady=(32, 24))
 
         self.cancel_btn: ctk.CTkButton = ctk.CTkButton(btn_frame, text="Отмена", width=110, height=40,
-                                                       fg_color="transparent", text_color="#666666", border_width=2,
-                                                       border_color="#cccccc", command=self.on_cancel)
+                                                       fg_color="transparent", text_color="#000000", border_width=2,
+                                                       border_color="#cccccc", command=self.on_cancel, hover_color="#e0e0e0")
         self.cancel_btn.pack(side="left", padx=(0, 12))
 
         button_text = "Сохранить" if self.is_edit_mode else "Создать"
@@ -165,6 +165,8 @@ class MeetingWindow(ctk.CTkToplevel):
             return
 
         date_str = f"{self.dd.get().strip()}.{self.mm.get().strip()}.{self.yyyy.get().strip()}"
+        date_obj = datetime.strptime(date_str, "%d.%m.%Y")
+        date_str = date_obj.strftime("%d.%m.%Y")
         time_str = self.time_entry.get().strip()
 
         self.meeting.title = title

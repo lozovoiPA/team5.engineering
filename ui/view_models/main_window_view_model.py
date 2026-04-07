@@ -63,7 +63,8 @@ class MainWindowViewModel:
                 (filter_type == "Ближайшие" and self._filter_close(days_diff)) or
                 (filter_type == "На день" and self._filter_today(days_diff)) or
                 (filter_type == "На неделю" and self._filter_week(days_diff)) or
-                (filter_type == "Важные" and meeting.is_important)
+                (filter_type == "Важные" and meeting.is_important) or
+                (filter_type == "Все")
         )
 
     def _sort_and_display(self, meetings):
@@ -80,8 +81,18 @@ class MainWindowViewModel:
         if meeting not in self.meetings:
             self.meetings.append(meeting)
         if self._apply_filter(meeting):
-            filtered = self.display_meetings + [meeting]
+            if meeting not in self.display_meetings:
+                filtered = self.display_meetings + [meeting]
+            else:
+                filtered = self.display_meetings
             self._sort_and_display(filtered)
+            return True
+        elif meeting in self.display_meetings:
+            self.display_meetings.remove(meeting)
+            filtered = self.display_meetings
+            self._sort_and_display(filtered)
+            return True
+        return False # meaning refresh display
 
     def filter_meetings(self, filter_type):
         if self.filter == filter_type:

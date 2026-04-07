@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from data.entities.meeting import Meeting
 from data.repositories.meeting_repository import MeetingRepository
-from services.result import MeetingsRetrieved, ErrorResult, MeetingsCreated
+from services.result import MeetingsRetrieved, ErrorResult, MeetingsCreated, MeetingsUpdated
 
 
 class MeetingWindowViewModel:
@@ -15,7 +15,7 @@ class MeetingWindowViewModel:
         if isinstance(result, ErrorResult):
             print(f"Error in saving meeting:\n{result.error_text}")
             return False
-        elif isinstance(result, MeetingsCreated):
+        elif isinstance(result, MeetingsCreated | MeetingsUpdated):
             return True
         else:
             print(f"Unknown error in saving meeting.")

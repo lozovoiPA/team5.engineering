@@ -69,7 +69,7 @@ class MainWindow(ctk.CTkToplevel):
 
         ctk.CTkButton(btn_container, text="+ Создать встречу", width=160, height=36,
                       corner_radius=8, fg_color="#0066cc", hover_color="#0055aa",
-                      text_color="white", command=self._open_create_window) \
+                      text_color="white", command=self._open_meeting_window) \
             .pack(side="left")
 
         self.main_frame = ctk.CTkFrame(self.buffer, fg_color="transparent")
@@ -120,18 +120,27 @@ class MainWindow(ctk.CTkToplevel):
         if self.on_auto_generate:
             self.on_auto_generate()
 
-    def _open_create_window(self):
-        MeetingWindow(self, repository=self.view_model.repository, on_save=self._on_meeting_created)
+    def _open_meeting_window(self, meeting=None):
+        MeetingWindow(self,
+                      repository=self.view_model.repository,
+                      on_save=self._on_meeting_saved if meeting is None else self._on_meeting_edit,
+                      prefill_meeting=meeting)
 
-    def _on_meeting_created(self, meeting: Meeting):
+    def _on_meeting_edit(self, meeting: Meeting):
+        self._on_meeting_saved(meeting, creating=False)
+
+    def _on_meeting_saved(self, meeting: Meeting, creating=True):
         self._start_load(
             CircularLoader(self.meetings_frame, size=30, color="#1e90ff", bgcolor="#e0e0e0",
                            angle=self.view_model.loader_angle),
             0.3, 0.08
         )
-        self.view_model.add_meeting(meeting)
-        self._render_meetings()
-        messagebox.showinfo("Создано", f"Встреча «{meeting.title}» добавлена")
+        if self.view_model.add_meeting(meeting):
+            self._render_meetings()
+        if creating:
+            messagebox.showinfo("Создано", f"Встреча «{meeting.title}» добавлена")
+        else:
+            messagebox.showinfo("Успешно", f"Встреча «{meeting.title}» изменена")
         self._end_load()
 
     def _on_filter_change(self, choice):
@@ -245,7 +254,7 @@ class MainWindow(ctk.CTkToplevel):
             actions_frame, text="✏", width=28, height=28, corner_radius=14,
             fg_color="transparent", hover_color="#e0f0ff",
             text_color="#888888",
-            command=lambda meeting=m: self._edit_meeting(meeting),
+            command=lambda meeting=m: self._open_meeting_window(meeting),
             anchor="center"
         )
         Hovertip(edit_btn, "Редактировать встречу", hover_delay=300)
@@ -281,17 +290,6 @@ class MainWindow(ctk.CTkToplevel):
             hovertip.text = "Снять отметку" if meeting.is_important else "Отметить важной"
         else:
             messagebox.showwarning("Ошибка", "Не удалось изменить статус встречи.")
-
-    def _edit_meeting(self, meeting):
-        MeetingWindow(self, on_save=self._on_meeting_edited, prefill_meeting=meeting)
-
-    def _on_meeting_edited(self, updated_meeting: Meeting):
-        for i, m in enumerate(self.meetings):
-            if m.id == updated_meeting.id:
-                self.meetings[i] = updated_meeting
-                break
-        self._render_meetings()
-        messagebox.showinfo("Обновлено", f"Встреча «{updated_meeting.title}» обновлена")
 
     def _delete_meeting(self, meeting):
         if messagebox.askyesno("Удаление", f"Удалить встречу «{meeting.title}»?"):

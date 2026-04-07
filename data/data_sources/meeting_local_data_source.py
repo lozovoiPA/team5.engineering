@@ -66,12 +66,13 @@ class MeetingLocalDataSource:
             {e}
             ''')
 
-    def check_collisions(self, timestamp: datetime, delta: timedelta):
+    def check_collisions(self, meeting: Meeting, timestamp: datetime, delta: timedelta):
         def _query(session):
             _meetings = [meeting_from_db(meeting_db) for meeting_db
                          in session.query(MeetingDb)
                          .filter(and_(MeetingDb.timestamp >= timestamp - delta,
-                                      MeetingDb.timestamp <= timestamp + delta))
+                                      MeetingDb.timestamp <= timestamp + delta,
+                                      MeetingDb.id != meeting.id))
                          .all()]
             return _meetings
 

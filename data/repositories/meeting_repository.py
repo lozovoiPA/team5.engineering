@@ -26,6 +26,6 @@ class MeetingRepository:
 
     def check_collision(self, meeting: Meeting, delta: timedelta):
         timestamp = datetime.datetime.strptime(meeting.date + ' ' + meeting.time, '%d.%m.%Y %H:%M')
-        result = self.meetings_local.check_collisions(timestamp, delta)
+        result = self.meetings_local.check_collisions(meeting, timestamp, delta)
 
         return result
