@@ -124,9 +124,15 @@ class MainWindow(ctk.CTkToplevel):
         MeetingWindow(self, repository=self.view_model.repository, on_save=self._on_meeting_created)
 
     def _on_meeting_created(self, meeting: Meeting):
+        self._start_load(
+            CircularLoader(self.meetings_frame, size=30, color="#1e90ff", bgcolor="#e0e0e0",
+                           angle=self.view_model.loader_angle),
+            0.3, 0.08
+        )
         self.view_model.add_meeting(meeting)
         self._render_meetings()
         messagebox.showinfo("Создано", f"Встреча «{meeting.title}» добавлена")
+        self._end_load()
 
     def _on_filter_change(self, choice):
         if choice == self.view_model.filter:
