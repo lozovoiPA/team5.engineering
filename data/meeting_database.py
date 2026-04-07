@@ -20,8 +20,16 @@ class MeetingDatabase:
         self.engine = create_engine(f'sqlite:///{path}')
         base.metadata.create_all(self.engine)
 
-    def execute_query(self, query):
+    def execute_query(self, query, use_context_manager=True):
         result = None
-        with sessionmaker(bind=self.engine).begin() as session:
+        if use_context_manager:
+            with sessionmaker(bind=self.engine).begin() as session:
+                result = query(session)
+        else:
+            Session = sessionmaker(bind=self.engine)
+            session = Session()
+
             result = query(session)
+            if session.is_active:
+                session.close()
         return result

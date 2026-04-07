@@ -1,3 +1,4 @@
+import threading
 from idlelib.tooltip import Hovertip
 
 import customtkinter as ctk
@@ -23,6 +24,7 @@ class MainWindow(ctk.CTkToplevel):
         self.buffer.lower(self.form)
 
         self.view_model = MainWindowViewModel(repository)
+        self.loaders = []
 
         self.on_auto_generate = on_auto_generate
 
@@ -31,7 +33,21 @@ class MainWindow(ctk.CTkToplevel):
 
         self._build_ui()
 
+    def _start_load(self, loader: CircularLoader, loader_x, loader_y):
+        self.view_model.loading = True
+        self.loader = loader
+        loader.place(relx=loader_x, rely=loader_y, anchor="center")
+        self.config(cursor="watch")
+
+    def _end_load(self):
+        self.view_model.loading = False
+        self.view_model.loader_angle = self.loader.angle
+        self.config(cursor="")
+
     def _build_ui(self):
+        self._start_load(CircularLoader(self.form, size=50, color="#1e90ff", bgcolor="#eeeeee",
+                                        angle=self.view_model.loader_angle),
+                         0.5, 0.5)
         for child in self.buffer.winfo_children():
             child.destroy()
 
@@ -71,9 +87,11 @@ class MainWindow(ctk.CTkToplevel):
             if not self.view_model.loading:
                 self.form, self.buffer = (self.buffer, self.form)
                 self.update_idletasks()
+                self._end_load()
                 self.form.tkraise(self.buffer)
             else:
                 self.after(50, lambda: finish_render())
+
         finish_render()
 
     def _build_filter_frame(self):
@@ -103,13 +121,10 @@ class MainWindow(ctk.CTkToplevel):
             self.on_auto_generate()
 
     def _open_create_window(self):
-        MeetingWindow(self, repository=self.view_model.repository, on_create=self._on_meeting_created)
+        MeetingWindow(self, repository=self.view_model.repository, on_save=self._on_meeting_created)
 
     def _on_meeting_created(self, meeting: Meeting):
-        if not meeting.id or meeting.id == 0:
-            max_id = max([m.id for m in self.meetings], default=0)
-            meeting.id = max_id + 1
-        self.meetings.append(meeting)
+        self.view_model.add_meeting(meeting)
         self._render_meetings()
         messagebox.showinfo("Создано", f"Встреча «{meeting.title}» добавлена")
 
@@ -117,12 +132,11 @@ class MainWindow(ctk.CTkToplevel):
         if choice == self.view_model.filter:
             return
 
-        self.view_model.loading = True
-        self.loader = CircularLoader(self.meetings_frame, size=30, color="#1e90ff", bgcolor="#e0e0e0",
-                                     angle=self.view_model.loader_angle)
-        self.loader.place(relx=0.3, rely=0.08, anchor="center")
-        self.config(cursor="watch")
-
+        self._start_load(
+            CircularLoader(self.meetings_frame, size=30, color="#1e90ff", bgcolor="#e0e0e0",
+                           angle=self.view_model.loader_angle),
+            0.3, 0.08
+        )
         self.view_model.filter_meetings(choice)
         self._render_meetings()
 
@@ -139,9 +153,7 @@ class MainWindow(ctk.CTkToplevel):
         def update_frame():
             self.meetings_frame, self.meetings_buffer = (self.meetings_buffer, self.meetings_frame)
             self.update_idletasks()
-            self.view_model.loading = False
-            self.view_model.loader_angle = self.loader.angle
-            self.config(cursor="")
+            self._end_load()
             self.meetings_frame.tkraise(self.meetings_buffer)
 
         if self.view_model.error_display:
@@ -173,9 +185,10 @@ class MainWindow(ctk.CTkToplevel):
         def _build_card(index):
             if index < len(self.view_model.display_meetings):
                 self._build_meeting_card(self.view_model.display_meetings[index])
-                self.after(50, lambda: _build_card(index+1))
+                self.after(50, lambda: _build_card(index + 1))
             else:
                 update_frame()
+
         _build_card(0)
 
     def _build_meeting_card(self, m):
@@ -259,7 +272,7 @@ class MainWindow(ctk.CTkToplevel):
         self._render_meetings()
 
     def _edit_meeting(self, meeting):
-        MeetingWindow(self, on_create=self._on_meeting_edited, prefill_meeting=meeting)
+        MeetingWindow(self, on_save=self._on_meeting_edited, prefill_meeting=meeting)
 
     def _on_meeting_edited(self, updated_meeting: Meeting):
         for i, m in enumerate(self.meetings):

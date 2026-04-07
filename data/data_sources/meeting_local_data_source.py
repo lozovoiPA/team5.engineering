@@ -39,10 +39,13 @@ class MeetingLocalDataSource:
 
         def query(session):
             session.add(meeting_db)
+            session.commit()
+            meeting.id = meeting_db.id
+            session.close()
 
         try:
-            self.db.execute_query(query)
-            print(f"Meeting created with id {meeting_db.id}")
+            self.db.execute_query(query, use_context_manager=False)
+            print(f"Meeting created with id {meeting.id}")
             return MeetingsCreated()
         except Exception as e:
             return ErrorResult(f'''
