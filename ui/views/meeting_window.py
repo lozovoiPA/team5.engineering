@@ -1,6 +1,5 @@
 import customtkinter as ctk
 from tkinter import messagebox
-from data.entities import meeting
 from datetime import datetime, timedelta
 
 from data.entities.meeting import Meeting
@@ -9,10 +8,11 @@ from ui.view_models.meeting_window_view_model import MeetingWindowViewModel
 
 
 class MeetingWindow(ctk.CTkToplevel):
-    def __init__(self, parent, on_create, repository: MeetingRepository, prefill_meeting=None):
+    def __init__(self, parent, on_save, repository: MeetingRepository, prefill_meeting=None, on_cancel=None):
         super().__init__(parent)
 
-        self.on_create = on_create
+        self.on_save = on_save
+        self.on_cancel = lambda: self.destroy() if on_cancel is None else on_cancel
         self.prefill_meeting = prefill_meeting
 
         self.view_model = MeetingWindowViewModel(repository)
@@ -23,6 +23,11 @@ class MeetingWindow(ctk.CTkToplevel):
                 prefill_meeting.id is not None and
                 prefill_meeting.id > 0
         )
+        if self.is_edit_mode:
+            self.view_model.meeting = prefill_meeting
+        else:
+            self.view_model.meeting = Meeting()
+        self.meeting = self.view_model.meeting
 
         if self.is_edit_mode:
             self.title("Редактирование встречи")
@@ -90,18 +95,16 @@ class MeetingWindow(ctk.CTkToplevel):
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(side="right", padx=32, pady=(32, 24))
 
-        ctk.CTkButton(btn_frame, text="Отмена", width=110, height=40,
-                      fg_color="transparent", text_color="#666666", border_width=2,
-                      border_color="#cccccc", command=self.destroy).pack(side="left", padx=(0, 12))
+        self.cancel_btn: ctk.CTkButton = ctk.CTkButton(btn_frame, text="Отмена", width=110, height=40,
+                                                       fg_color="transparent", text_color="#000000", border_width=2,
+                                                       border_color="#cccccc", command=self.on_cancel, hover_color="#e0e0e0")
+        self.cancel_btn.pack(side="left", padx=(0, 12))
 
-        if self.is_edit_mode:
-            button_text = "Сохранить"
-        else:
-            button_text = "Создать"
-
-        ctk.CTkButton(btn_frame, text=button_text, width=110, height=40,
-                      fg_color="#0066cc", hover_color="#0055aa", text_color="white",
-                      command=self._try_save).pack(side="left")
+        button_text = "Сохранить" if self.is_edit_mode else "Создать"
+        self.save_btn: ctk.CTkButton = ctk.CTkButton(btn_frame, text=button_text, width=110, height=40,
+                                                     fg_color="#0066cc", hover_color="#0055aa", text_color="white",
+                                                     command=self._try_save)
+        self.save_btn.pack(side="left")
 
     def _set_default_datetime(self):
         """Устанавливаем текущую дату и время +1 час"""
@@ -147,35 +150,40 @@ class MeetingWindow(ctk.CTkToplevel):
         self.time_entry.insert(0, self.prefill_meeting.time)
 
     def _try_save(self):
+        def unblock_buttons():
+            self.cancel_btn.configure(state="normal")
+            self.save_btn.configure(state="normal", text="Сохранить" if self.is_edit_mode else "Создать")
+
+        print(type(self.cancel_btn), type(self.save_btn))
+
+        self.cancel_btn.configure(state="disabled")
+        self.save_btn.configure(state="disabled", text="Сохранение...")
+
         title = self.title_entry.get().strip()
         if not title:
             messagebox.showwarning("Ошибка", "Введите название встречи")
             return
 
         date_str = f"{self.dd.get().strip()}.{self.mm.get().strip()}.{self.yyyy.get().strip()}"
+        date_obj = datetime.strptime(date_str, "%d.%m.%Y")
+        date_str = date_obj.strftime("%d.%m.%Y")
         time_str = self.time_entry.get().strip()
 
-        if self.is_edit_mode and self.prefill_meeting:
-            meeting = Meeting(
-                title=title,
-                date=date_str,
-                time=time_str,
-                description=self.desc_entry.get().strip(),
-                is_important=self.prefill_meeting.is_important,
-                id=self.prefill_meeting.id
-            )
-        else:
-            meeting = Meeting(
-                title=title,
-                date=date_str,
-                time=time_str,
-                description=self.desc_entry.get().strip()
-            )
-
-        self.on_create(meeting)
+        self.meeting.title = title
+        self.meeting.date = date_str
+        self.meeting.time = time_str
+        self.meeting.description = self.desc_entry.get().strip()
 
         # Проверка коллизий (через вьюмодель)
         # Если есть коллизия (окно - 1 час) - вывод в логи
-        self.view_model.check_collisions(meeting)
-
-        self.destroy()
+        collision_meetings = self.view_model.check_collisions()
+        if collision_meetings is not None:
+            messagebox.showwarning("Ошибка", "Обнаружены коллизии встреч, встреча не создана (пока).")
+            unblock_buttons()
+        else:
+            if self.view_model.save_meeting():
+                self.on_save(self.meeting)
+                self.destroy()
+            else:
+                messagebox.showwarning("Ошибка", "Ошибка при сохранении встречи. Не удалось сохранить.")
+                unblock_buttons()

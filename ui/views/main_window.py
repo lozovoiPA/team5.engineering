@@ -1,3 +1,4 @@
+import threading
 from idlelib.tooltip import Hovertip
 
 import customtkinter as ctk
@@ -23,6 +24,7 @@ class MainWindow(ctk.CTkToplevel):
         self.buffer.lower(self.form)
 
         self.view_model = MainWindowViewModel(repository)
+        self.loaders = []
 
         self.on_auto_generate = on_auto_generate
 
@@ -31,7 +33,21 @@ class MainWindow(ctk.CTkToplevel):
 
         self._build_ui()
 
+    def _start_load(self, loader: CircularLoader, loader_x, loader_y):
+        self.view_model.loading = True
+        self.loader = loader
+        loader.place(relx=loader_x, rely=loader_y, anchor="center")
+        self.config(cursor="watch")
+
+    def _end_load(self):
+        self.view_model.loading = False
+        self.view_model.loader_angle = self.loader.angle
+        self.config(cursor="")
+
     def _build_ui(self):
+        self._start_load(CircularLoader(self.form, size=50, color="#1e90ff", bgcolor="#eeeeee",
+                                        angle=self.view_model.loader_angle),
+                         0.5, 0.5)
         for child in self.buffer.winfo_children():
             child.destroy()
 
@@ -53,7 +69,7 @@ class MainWindow(ctk.CTkToplevel):
 
         ctk.CTkButton(btn_container, text="+ Создать встречу", width=160, height=36,
                       corner_radius=8, fg_color="#0066cc", hover_color="#0055aa",
-                      text_color="white", command=self._open_create_window) \
+                      text_color="white", command=self._open_meeting_window) \
             .pack(side="left")
 
         self.main_frame = ctk.CTkFrame(self.buffer, fg_color="transparent")
@@ -71,9 +87,11 @@ class MainWindow(ctk.CTkToplevel):
             if not self.view_model.loading:
                 self.form, self.buffer = (self.buffer, self.form)
                 self.update_idletasks()
+                self._end_load()
                 self.form.tkraise(self.buffer)
             else:
                 self.after(50, lambda: finish_render())
+
         finish_render()
 
     def _build_filter_frame(self):
@@ -102,27 +120,38 @@ class MainWindow(ctk.CTkToplevel):
         if self.on_auto_generate:
             self.on_auto_generate()
 
-    def _open_create_window(self):
-        MeetingWindow(self, repository=self.view_model.repository, on_create=self._on_meeting_created)
+    def _open_meeting_window(self, meeting=None):
+        MeetingWindow(self,
+                      repository=self.view_model.repository,
+                      on_save=self._on_meeting_saved if meeting is None else self._on_meeting_edit,
+                      prefill_meeting=meeting)
 
-    def _on_meeting_created(self, meeting: Meeting):
-        if not meeting.id or meeting.id == 0:
-            max_id = max([m.id for m in self.meetings], default=0)
-            meeting.id = max_id + 1
-        self.meetings.append(meeting)
-        self._render_meetings()
-        messagebox.showinfo("Создано", f"Встреча «{meeting.title}» добавлена")
+    def _on_meeting_edit(self, meeting: Meeting):
+        self._on_meeting_saved(meeting, creating=False)
+
+    def _on_meeting_saved(self, meeting: Meeting, creating=True):
+        self._start_load(
+            CircularLoader(self.meetings_frame, size=30, color="#1e90ff", bgcolor="#e0e0e0",
+                           angle=self.view_model.loader_angle),
+            0.3, 0.08
+        )
+        if self.view_model.add_meeting(meeting):
+            self._render_meetings()
+        if creating:
+            messagebox.showinfo("Создано", f"Встреча «{meeting.title}» добавлена")
+        else:
+            messagebox.showinfo("Успешно", f"Встреча «{meeting.title}» изменена")
+        self._end_load()
 
     def _on_filter_change(self, choice):
         if choice == self.view_model.filter:
             return
 
-        self.view_model.loading = True
-        self.loader = CircularLoader(self.meetings_frame, size=30, color="#1e90ff", bgcolor="#e0e0e0",
-                                     angle=self.view_model.loader_angle)
-        self.loader.place(relx=0.3, rely=0.08, anchor="center")
-        self.config(cursor="watch")
-
+        self._start_load(
+            CircularLoader(self.meetings_frame, size=30, color="#1e90ff", bgcolor="#e0e0e0",
+                           angle=self.view_model.loader_angle),
+            0.3, 0.08
+        )
         self.view_model.filter_meetings(choice)
         self._render_meetings()
 
@@ -139,9 +168,7 @@ class MainWindow(ctk.CTkToplevel):
         def update_frame():
             self.meetings_frame, self.meetings_buffer = (self.meetings_buffer, self.meetings_frame)
             self.update_idletasks()
-            self.view_model.loading = False
-            self.view_model.loader_angle = self.loader.angle
-            self.config(cursor="")
+            self._end_load()
             self.meetings_frame.tkraise(self.meetings_buffer)
 
         if self.view_model.error_display:
@@ -173,9 +200,10 @@ class MainWindow(ctk.CTkToplevel):
         def _build_card(index):
             if index < len(self.view_model.display_meetings):
                 self._build_meeting_card(self.view_model.display_meetings[index])
-                self.after(50, lambda: _build_card(index+1))
+                self.after(50, lambda: _build_card(index + 1))
             else:
                 update_frame()
+
         _build_card(0)
 
     def _build_meeting_card(self, m):
@@ -215,17 +243,18 @@ class MainWindow(ctk.CTkToplevel):
             width=28, height=28, corner_radius=14,
             fg_color="transparent", hover_color="#e0f0ff",
             text_color="#ffcc00" if m.is_important else "#888888",
-            command=lambda meeting=m: self._toggle_importance(meeting),
+            command=None,
             anchor="center"
         )
-        Hovertip(star_btn, "Снять отметку" if m.is_important else "Отметить важной", hover_delay=300)
+        hovertip = Hovertip(star_btn, "Снять отметку" if m.is_important else "Отметить важной", hover_delay=300)
+        star_btn.configure(command=lambda meeting=m: self._toggle_importance(meeting, star_btn, hovertip))
         star_btn.pack(side="left", padx=1)
 
         edit_btn = ctk.CTkButton(
             actions_frame, text="✏", width=28, height=28, corner_radius=14,
             fg_color="transparent", hover_color="#e0f0ff",
             text_color="#888888",
-            command=lambda meeting=m: self._edit_meeting(meeting),
+            command=lambda meeting=m: self._open_meeting_window(meeting),
             anchor="center"
         )
         Hovertip(edit_btn, "Редактировать встречу", hover_delay=300)
@@ -254,21 +283,23 @@ class MainWindow(ctk.CTkToplevel):
 
         ctk.CTkFrame(card, height=4, fg_color="transparent").pack(fill="x", pady=(0, 8))
 
-    def _toggle_importance(self, meeting):
-        self.view_model.toggle_importance(meeting)
-        self._render_meetings()
-
-    def _edit_meeting(self, meeting):
-        MeetingWindow(self, on_create=self._on_meeting_edited, prefill_meeting=meeting)
-
-    def _on_meeting_edited(self, updated_meeting: Meeting):
-        for i, m in enumerate(self.meetings):
-            if m.id == updated_meeting.id:
-                self.meetings[i] = updated_meeting
-                break
-        self._render_meetings()
-        messagebox.showinfo("Обновлено", f"Встреча «{updated_meeting.title}» обновлена")
+    def _toggle_importance(self, meeting, btn, hovertip: Hovertip):
+        if self.view_model.toggle_importance(meeting):
+            btn.configure(text="★" if meeting.is_important else "☆",
+                          text_color="#ffcc00" if meeting.is_important else "#888888")
+            hovertip.text = "Снять отметку" if meeting.is_important else "Отметить важной"
+        else:
+            messagebox.showwarning("Ошибка", "Не удалось изменить статус встречи.")
 
     def _delete_meeting(self, meeting):
-        self.view_model.delete_meeting(meeting)
-        self._render_meetings()
+        if messagebox.askyesno("Удаление", f"Удалить встречу «{meeting.title}»?"):
+            self._start_load(
+                CircularLoader(self.meetings_frame, size=30, color="#1e90ff", bgcolor="#e0e0e0",
+                               angle=self.view_model.loader_angle),
+                0.3, 0.08
+            )
+            if self.view_model.delete_meeting(meeting):
+                self._render_meetings()
+            else:
+                messagebox.showwarning("Ошибка", "Ошибка при удалении встречи.")
+                self._end_load()

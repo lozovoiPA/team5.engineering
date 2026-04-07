@@ -44,8 +44,10 @@ class Dependencies:
 
         # Создание заглушек встреч (убрать на релизе)
         res = self.meetings_local_data_source.get_meetings()
-        if isinstance(res, MeetingsRetrieved) and len(res.meetings) <= 1:
-            self.test_db_init()
+        if isinstance(res, MeetingsRetrieved):
+            print(f"Найдено: {len(res.meetings)} встреч")
+            if len(res.meetings) <= 1:
+                self.test_db_init()
 
     def get_model(self):
         model = Model()
@@ -55,6 +57,7 @@ class Dependencies:
         return model
 
     def test_db_init(self):
+        print("Создаю заглушки встреч...")
         today = datetime.datetime.now()
         today_meet = (today + datetime.timedelta(hours=1))
         tomorrow_meet = today + datetime.timedelta(days=1)
@@ -68,13 +71,13 @@ class Dependencies:
         tomorrow_meet_time = tomorrow_meet.strftime("%H:%M")
         after_tomorrow_meet_time = after_tomorrow_meet.strftime("%H:%M")
         meetings = [
-            Meeting("Встреча по ML", "22.04.2026", "13:35", id=1),
-            Meeting("Встреча по LLM", "22.04.2026", "12:35", is_important=True, id=2),
-            Meeting("Встреча 1", "22.04.2026", "11:35", id=3),
-            Meeting("Встреча 2", "22.04.2026", "13:35", id=4),
-            Meeting("Встреча сегодня", today_meet_date, today_meet_time, id=5),
-            Meeting("Встреча завтра", tomorrow_meet_date, tomorrow_meet_time, id=6),
-            Meeting("Встреча послезавтра", after_tomorrow_meet_date, after_tomorrow_meet_time, id=7)
+            Meeting("Встреча по ML", "22.04.2026", "13:35"),
+            Meeting("Встреча по LLM", "22.04.2026", "12:35", is_important=True),
+            Meeting("Встреча 1", "22.04.2026", "11:35"),
+            Meeting("Встреча 2", "22.04.2026", "13:35"),
+            Meeting("Встреча сегодня", today_meet_date, today_meet_time),
+            Meeting("Встреча завтра", tomorrow_meet_date, tomorrow_meet_time),
+            Meeting("Встреча послезавтра", after_tomorrow_meet_date, after_tomorrow_meet_time)
         ]
         for m in meetings:
             self.meetings_repo.save_meeting(m)

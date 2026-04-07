@@ -3,13 +3,12 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from services.result import MeetingsRetrieved, ErrorResult, MeetingsCreated, MeetingsDeleted
+from services.result import MeetingsRetrieved, ErrorResult, MeetingsCreated, MeetingsDeleted, MeetingsUpdated
 from ..entities.meeting import Meeting
 from ..meeting_database import MeetingDb, MeetingDatabase
 
 
-def meeting_to_db(meeting: Meeting):
-    meeting_db = MeetingDb()
+def meeting_to_db(meeting: Meeting, meeting_db=MeetingDb()):
     meeting_db.name = meeting.title
     meeting_db.priority = meeting.is_important
     meeting_db.timestamp = datetime.strptime(meeting.date + ' ' + meeting.time,
@@ -39,10 +38,13 @@ class MeetingLocalDataSource:
 
         def query(session):
             session.add(meeting_db)
+            session.commit()
+            meeting.id = meeting_db.id
+            session.close()
 
         try:
-            self.db.execute_query(query)
-            print(f"Meeting created with id {meeting_db.id}")
+            self.db.execute_query(query, use_context_manager=False)
+            print(f"Meeting created with id {meeting.id}")
             return MeetingsCreated()
         except Exception as e:
             return ErrorResult(f'''
@@ -64,12 +66,13 @@ class MeetingLocalDataSource:
             {e}
             ''')
 
-    def check_collisions(self, timestamp: datetime, delta: timedelta):
+    def check_collisions(self, meeting: Meeting, timestamp: datetime, delta: timedelta):
         def _query(session):
             _meetings = [meeting_from_db(meeting_db) for meeting_db
                          in session.query(MeetingDb)
                          .filter(and_(MeetingDb.timestamp >= timestamp - delta,
-                                      MeetingDb.timestamp <= timestamp + delta))
+                                      MeetingDb.timestamp <= timestamp + delta,
+                                      MeetingDb.id != meeting.id))
                          .all()]
             return _meetings
 
@@ -82,6 +85,23 @@ class MeetingLocalDataSource:
             Exception in MeetingLocalDataSource.check_collisions();
             {e}
             ''')
+
+    def update_meeting(self, meeting):
+        def _query(session):
+            meeting_db = session.query(MeetingDb).filter_by(id=meeting.id).first()
+            if meeting_db is None:
+                return ErrorResult("Meeting not found")
+            meeting_to_db(meeting, meeting_db)
+            return MeetingsUpdated()
+
+        try:
+            result = self.db.execute_query(_query)
+            return result
+        except Exception as e:
+            return ErrorResult(f'''
+                        Exception in MeetingLocalDataSource.delete_meeting();
+                        {e}
+                        ''')
 
     def delete_meeting(self, meeting):
         def query(session: Session):

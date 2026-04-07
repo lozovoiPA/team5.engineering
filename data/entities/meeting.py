@@ -8,7 +8,7 @@ class Meeting:
     time: str = ""
     description: str = ""
     is_important: bool = False
-    id: int = 0
+    id: int = None
 
     def short_repr(self):
         return self.title

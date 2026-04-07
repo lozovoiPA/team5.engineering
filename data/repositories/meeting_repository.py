@@ -10,7 +10,10 @@ class MeetingRepository:
         self.meetings_local = meetings_local
 
     def save_meeting(self, meeting: Meeting):
-        result = self.meetings_local.save_meeting(meeting)
+        if meeting.id is not None:
+            result = self.meetings_local.update_meeting(meeting)
+        else:
+            result = self.meetings_local.save_meeting(meeting)
         return result
 
     def get_meetings(self):
@@ -23,6 +26,6 @@ class MeetingRepository:
 
     def check_collision(self, meeting: Meeting, delta: timedelta):
         timestamp = datetime.datetime.strptime(meeting.date + ' ' + meeting.time, '%d.%m.%Y %H:%M')
-        result = self.meetings_local.check_collisions(timestamp, delta)
+        result = self.meetings_local.check_collisions(meeting, timestamp, delta)
 
         return result
