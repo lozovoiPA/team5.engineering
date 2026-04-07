@@ -179,6 +179,9 @@ class MeetingWindow(ctk.CTkToplevel):
             messagebox.showwarning("Ошибка", "Обнаружены коллизии встреч, встреча не создана (пока).")
             unblock_buttons()
         else:
-            self.view_model.save_meeting()
-            self.on_save(self.meeting)
-            self.destroy()
+            if self.view_model.save_meeting():
+                self.on_save(self.meeting)
+                self.destroy()
+            else:
+                messagebox.showwarning("Ошибка", "Ошибка при сохранении встречи. Не удалось сохранить.")
+                unblock_buttons()

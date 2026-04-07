@@ -1,7 +1,7 @@
 from tkinter import messagebox
 
 from data.repositories.meeting_repository import MeetingRepository
-from services.result import ErrorResult, MeetingsRetrieved, MeetingsDeleted
+from services.result import ErrorResult, MeetingsRetrieved, MeetingsDeleted, MeetingsUpdated
 from datetime import datetime
 
 
@@ -60,10 +60,10 @@ class MainWindowViewModel:
         if filter_type is None:
             filter_type = self.filter
         return (
-            (filter_type == "Ближайшие" and self._filter_close(days_diff)) or
-            (filter_type == "На день" and self._filter_today(days_diff)) or
-            (filter_type == "На неделю" and self._filter_week(days_diff)) or
-            (filter_type == "Важные" and meeting.is_important)
+                (filter_type == "Ближайшие" and self._filter_close(days_diff)) or
+                (filter_type == "На день" and self._filter_today(days_diff)) or
+                (filter_type == "На неделю" and self._filter_week(days_diff)) or
+                (filter_type == "Важные" and meeting.is_important)
         )
 
     def _sort_and_display(self, meetings):
@@ -106,16 +106,27 @@ class MainWindowViewModel:
         self._sort_and_display(filtered)
 
     def delete_meeting(self, meeting):
-        if messagebox.askyesno("Удаление", f"Удалить встречу «{meeting.title}»?"):
-            result = self.repository.delete_meeting(meeting)
-            if isinstance(result, ErrorResult):
-                print(result.error_text)
-            elif isinstance(result, MeetingsDeleted):
-                self.meetings.remove(meeting)
-                if meeting in self.display_meetings:
-                    self.display_meetings.remove(meeting)
-            else:
-                print("Unknown error in MainWindowViewModel.delete_meeting()")
+        result = self.repository.delete_meeting(meeting)
+        if isinstance(result, ErrorResult):
+            print(result.error_text)
+            return False
+        elif isinstance(result, MeetingsDeleted):
+            self.meetings.remove(meeting)
+            if meeting in self.display_meetings:
+                self.display_meetings.remove(meeting)
+            return True
+        else:
+            print("Unknown error in MainWindowViewModel.delete_meeting()")
+            return False
 
     def toggle_importance(self, meeting):
         meeting.is_important = not meeting.is_important
+        result = self.repository.save_meeting(meeting)
+        if isinstance(result, ErrorResult):
+            print(result.error_text)
+            return False
+        elif isinstance(result, MeetingsUpdated):
+            return True
+        else:
+            print("Unknown error in MainWindowViewModel.toggle_importance()")
+            return False

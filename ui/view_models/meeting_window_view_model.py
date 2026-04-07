@@ -14,10 +14,12 @@ class MeetingWindowViewModel:
         result = self.repository.save_meeting(self.meeting)
         if isinstance(result, ErrorResult):
             print(f"Error in saving meeting:\n{result.error_text}")
+            return False
         elif isinstance(result, MeetingsCreated):
-            pass
+            return True
         else:
             print(f"Unknown error in saving meeting.")
+            return False
         pass
 
     def check_collisions(self):

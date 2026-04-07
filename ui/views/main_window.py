@@ -234,10 +234,11 @@ class MainWindow(ctk.CTkToplevel):
             width=28, height=28, corner_radius=14,
             fg_color="transparent", hover_color="#e0f0ff",
             text_color="#ffcc00" if m.is_important else "#888888",
-            command=lambda meeting=m: self._toggle_importance(meeting),
+            command=None,
             anchor="center"
         )
-        Hovertip(star_btn, "Снять отметку" if m.is_important else "Отметить важной", hover_delay=300)
+        hovertip = Hovertip(star_btn, "Снять отметку" if m.is_important else "Отметить важной", hover_delay=300)
+        star_btn.configure(command=lambda meeting=m: self._toggle_importance(meeting, star_btn, hovertip))
         star_btn.pack(side="left", padx=1)
 
         edit_btn = ctk.CTkButton(
@@ -273,9 +274,13 @@ class MainWindow(ctk.CTkToplevel):
 
         ctk.CTkFrame(card, height=4, fg_color="transparent").pack(fill="x", pady=(0, 8))
 
-    def _toggle_importance(self, meeting):
-        self.view_model.toggle_importance(meeting)
-        self._render_meetings()
+    def _toggle_importance(self, meeting, btn, hovertip: Hovertip):
+        if self.view_model.toggle_importance(meeting):
+            btn.configure(text="★" if meeting.is_important else "☆",
+                          text_color="#ffcc00" if meeting.is_important else "#888888")
+            hovertip.text = "Снять отметку" if meeting.is_important else "Отметить важной"
+        else:
+            messagebox.showwarning("Ошибка", "Не удалось изменить статус встречи.")
 
     def _edit_meeting(self, meeting):
         MeetingWindow(self, on_save=self._on_meeting_edited, prefill_meeting=meeting)
@@ -289,5 +294,14 @@ class MainWindow(ctk.CTkToplevel):
         messagebox.showinfo("Обновлено", f"Встреча «{updated_meeting.title}» обновлена")
 
     def _delete_meeting(self, meeting):
-        self.view_model.delete_meeting(meeting)
-        self._render_meetings()
+        if messagebox.askyesno("Удаление", f"Удалить встречу «{meeting.title}»?"):
+            self._start_load(
+                CircularLoader(self.meetings_frame, size=30, color="#1e90ff", bgcolor="#e0e0e0",
+                               angle=self.view_model.loader_angle),
+                0.3, 0.08
+            )
+            if self.view_model.delete_meeting(meeting):
+                self._render_meetings()
+            else:
+                messagebox.showwarning("Ошибка", "Ошибка при удалении встречи.")
+                self._end_load()
