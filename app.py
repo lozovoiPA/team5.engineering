@@ -50,10 +50,13 @@ class App:
             result = mw.create_meeting_from_text(text[0:300])
             self.root.after(0, lambda: self.update_ui_with_result(result))
 
+        self.uiworker.start_loading()
         thread = threading.Thread(target=background_work)
         thread.start()
 
     def update_ui_with_result(self, result):
+        self.uiworker.stop_loading()
+
         if isinstance(result, Meeting):
             self.uiworker.show_meeting_window_with_prefill(result)
         else:
