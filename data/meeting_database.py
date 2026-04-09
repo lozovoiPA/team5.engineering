@@ -26,10 +26,14 @@ class MeetingDatabase:
             with sessionmaker(bind=self.engine).begin() as session:
                 result = query(session)
         else:
+
             Session = sessionmaker(bind=self.engine)
             session = Session()
-
-            result = query(session)
+            try:
+                result = query(session)
+            except Exception as e:
+                print(f"Exception in db:\n{e}")
+                Session.close_all()
             if session.is_active:
                 session.close()
         return result

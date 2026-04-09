@@ -1,4 +1,3 @@
-import threading
 from idlelib.tooltip import Hovertip
 
 import customtkinter as ctk
@@ -10,7 +9,7 @@ from ui.views.meeting_window import MeetingWindow
 
 
 class MainWindow(ctk.CTkToplevel):
-    def __init__(self, root, repository, on_auto_generate=None):
+    def __init__(self, root, repository, on_auto_generate=None, on_close=None):
         super().__init__(root)
         self.title("Meeting Planner")
         self.geometry("860x620")
@@ -26,7 +25,9 @@ class MainWindow(ctk.CTkToplevel):
         self.view_model = MainWindowViewModel(repository)
         self.loaders = []
 
-        self.on_auto_generate = on_auto_generate
+        self.on_auto_generate = lambda: print("Auto-generate clicked - use Alt+Shift+Z") if on_auto_generate is None else on_auto_generate
+        self.on_close = lambda: self.destroy() if on_close is None else on_close
+        self.protocol("WM_DELETE_WINDOW", on_close)
 
         self.view_model.get_meetings()
         self.meetings = self.view_model.meetings
@@ -123,13 +124,13 @@ class MainWindow(ctk.CTkToplevel):
     def _open_meeting_window(self, meeting=None):
         MeetingWindow(self,
                       repository=self.view_model.repository,
-                      on_save=self._on_meeting_saved if meeting is None else self._on_meeting_edit,
+                      on_save=self.on_meeting_saved if meeting is None else self._on_meeting_edit,
                       prefill_meeting=meeting)
 
     def _on_meeting_edit(self, meeting: Meeting):
-        self._on_meeting_saved(meeting, creating=False)
+        self.on_meeting_saved(meeting, creating=False)
 
-    def _on_meeting_saved(self, meeting: Meeting, creating=True):
+    def on_meeting_saved(self, meeting: Meeting, creating=True):
         self._start_load(
             CircularLoader(self.meetings_frame, size=30, color="#1e90ff", bgcolor="#e0e0e0",
                            angle=self.view_model.loader_angle),

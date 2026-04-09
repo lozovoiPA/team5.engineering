@@ -8,7 +8,7 @@ from ui.view_models.meeting_window_view_model import MeetingWindowViewModel
 
 
 class MeetingWindow(ctk.CTkToplevel):
-    def __init__(self, parent, on_save, repository: MeetingRepository, prefill_meeting=None, on_cancel=None):
+    def __init__(self, parent, repository: MeetingRepository, prefill_meeting=None, on_save=None, on_cancel=None):
         super().__init__(parent)
 
         self.on_save = on_save
@@ -182,7 +182,8 @@ class MeetingWindow(ctk.CTkToplevel):
             unblock_buttons()
         else:
             if self.view_model.save_meeting():
-                self.on_save(self.meeting)
+                if self.on_save is not None:
+                    self.on_save(self.meeting)
                 self.destroy()
             else:
                 messagebox.showwarning("Ошибка", "Ошибка при сохранении встречи. Не удалось сохранить.")

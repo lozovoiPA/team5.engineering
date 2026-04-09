@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from data.entities import meeting
 from data.entities import Prompt
 import services.result as results
+from data.entities.meeting import Meeting
 
 
 class PromptRouter:

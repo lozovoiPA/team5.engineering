@@ -9,15 +9,29 @@ class UiWorker:
         self.main_window = None
 
     def show_main_window(self):
-        self.main_window = MainWindow(self.root, self.dependencies.meetings_repo, on_auto_generate=self.on_auto_generate)
-        self.main_window.deiconify()
+        self.main_window = MainWindow(self.root, self.dependencies.meetings_repo, on_close=self._close_main_window)
+        # self.main_window.deiconify()
         return self.main_window
 
-    def on_auto_generate(self):
-        print("Auto-generate clicked - use Alt+Shift+Z")
+    def _close_main_window(self):
+        self.main_window.destroy()
+        self.main_window = None
 
     def show_meeting_window_with_prefill(self, meeting):
-        MeetingWindow(self.main_window, on_save=self.main_window._on_meeting_saved, prefill_meeting=meeting)
+        if self.main_window is not None:
+            parent = self.main_window
+            on_save = self.main_window.on_meeting_saved
+
+        else:
+            parent = self.root
+            on_save = None
+        MeetingWindow(parent, prefill_meeting=meeting, repository=self.dependencies.meetings_repo, on_save=on_save)
 
     def show_meeting_window(self):
-        MeetingWindow(self.main_window, on_save=self.main_window._on_meeting_saved)
+        if self.main_window is not None:
+            parent = self.main_window
+            on_save = self.main_window.on_meeting_saved
+        else:
+            parent = self.root
+            on_save = None
+        MeetingWindow(parent, repository=self.dependencies.meetings_repo, on_save=on_save)

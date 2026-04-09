@@ -8,7 +8,9 @@ from ..entities.meeting import Meeting
 from ..meeting_database import MeetingDb, MeetingDatabase
 
 
-def meeting_to_db(meeting: Meeting, meeting_db=MeetingDb()):
+def meeting_to_db(meeting: Meeting, meeting_db=None):
+    if meeting_db is None:
+        meeting_db = MeetingDb()
     meeting_db.name = meeting.title
     meeting_db.priority = meeting.is_important
     meeting_db.timestamp = datetime.strptime(meeting.date + ' ' + meeting.time,
@@ -34,9 +36,9 @@ class MeetingLocalDataSource:
         self.db = db
 
     def save_meeting(self, meeting: Meeting):
-        meeting_db = meeting_to_db(meeting)
 
         def query(session):
+            meeting_db = meeting_to_db(meeting)
             session.add(meeting_db)
             session.commit()
             meeting.id = meeting_db.id
