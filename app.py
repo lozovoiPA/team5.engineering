@@ -1,10 +1,13 @@
+import os
 import signal
 import sys
 
 import customtkinter as ctk
+
+from services.notification.notification_worker import NotificationWorker
 from services.screen_text_listener import ScreenTextListener
-from services.uiworker import UiWorker
-from services.modelworker import ModelWorker
+from services.ui_worker import UiWorker
+from services.model_worker import ModelWorker
 from services.meeting_generation.modelfactory import ModelFactory
 from dependencies import Dependencies
 import threading
@@ -13,32 +16,51 @@ from data.entities.meeting import Meeting
 
 class App:
     def __init__(self):
+        self.did_init = False
+
         self.root = ctk.CTk()
         self.root.withdraw()
 
         signal.signal(signal.SIGINT, self.shutdown)
 
         self.dependencies = Dependencies()
-        self.uiworker = UiWorker(self.root, self.dependencies)
+        self.ui_worker = UiWorker(self.root, self.dependencies, self.shutdown)
+        self.notif_worker = NotificationWorker(self.dependencies)
         self.text_listener = ScreenTextListener()
 
+    # Called to postpone initializing most functionality! For example when we
+    # only need to send notifications. And the user doesn't press it
+    def init(self):
+        self.did_init = True
         self.text_listener.launch(self.catch_text_from_daemon)
 
     def launch(self):
-        self.uiworker.show_main_window()
+        if not self.did_init:
+            self.init()
+        self.ui_worker.show_main_window()
 
     def shutdown(self, signum, frame):
         print("App is shutting down (received SIGINT). Exiting...")
 
         self.text_listener.stop()
         self.root.destroy()
-        sys.exit(0)
+        os._exit(0)
+        # sys.exit(0)
 
     def catch_text_from_daemon(self, text):
         self.root.after(0, lambda: self.create_meeting_from_text(text))
 
     def create_meeting_from_text(self, text):
+        if not self.did_init:
+            return
         print(text[0:300])
+
+        def update_ui_with_result(result):
+            self.ui_worker.stop_loading()
+            if isinstance(result, Meeting):
+                self.ui_worker.show_meeting_window_with_prefill(result)
+            else:
+                self.ui_worker.show_meeting_window()
 
         def background_work():
             model = self.dependencies.get_model()
@@ -48,16 +70,8 @@ class App:
 
             mw = ModelWorker(model, factory, toolcalls, tools)
             result = mw.create_meeting_from_text(text[0:300])
-            self.root.after(0, lambda: self.update_ui_with_result(result))
+            self.root.after(0, lambda: update_ui_with_result(result))
 
-        self.uiworker.start_loading()
+        self.ui_worker.start_loading()
         thread = threading.Thread(target=background_work)
         thread.start()
-
-    def update_ui_with_result(self, result):
-        self.uiworker.stop_loading()
-
-        if isinstance(result, Meeting):
-            self.uiworker.show_meeting_window_with_prefill(result)
-        else:
-            self.uiworker.show_meeting_window()

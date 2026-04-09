@@ -17,6 +17,11 @@ class MeetingsCreated(Result):
         super().__init__("meetings_created")
 
 
+class TaskSchedulerSuccess(Result):
+    def __init__(self):
+        super().__init__("notification_planned")
+
+
 class MeetingsRetrieved(Result):
     def __init__(self, meetings):
         super().__init__("meetings_retrieved")

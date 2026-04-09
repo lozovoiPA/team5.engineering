@@ -1,6 +1,7 @@
 import datetime
 
 from data.data_sources.meeting_local_data_source import MeetingLocalDataSource
+from data.data_sources.notification_local_data_source import NotificationLocalDataSource
 from data.entities import Model
 
 from dotenv import load_dotenv
@@ -12,6 +13,8 @@ import sys
 from data.entities.meeting import Meeting
 from data.meeting_database import MeetingDatabase
 from data.repositories.meeting_repository import MeetingRepository
+from data.repositories.notification_repository import NotificationRepository
+from services.notification.task_scheduler import TaskScheduler
 from services.result import MeetingsRetrieved
 
 
@@ -25,22 +28,42 @@ def resource_path(relative_path):
 
 class Dependencies:
     def __init__(self):
-        parent_folder = resource_path(Path(__file__).resolve().parent)
-        print(parent_folder)
+        self.parent_folder = str(resource_path(Path(__file__).resolve().parent))
+        print(self.parent_folder)
 
-        dotenv_path = parent_folder / Path(".env")
+        dotenv_path = self.parent_folder / Path(".env")
         print(dotenv_path)
         load_dotenv(dotenv_path)
 
-        config_path = parent_folder / Path("data/config")
+        config_path = self.parent_folder / Path("data/config")
         models = config_path / "models.json"
         with models.open('r', encoding='utf-8') as file:
             self.model_config = json.load(file)
             print(self.model_config)
 
-        self.meetings_db = MeetingDatabase('data/localStorage.db')
+        self.meetings_db = MeetingDatabase(self.parent_folder / Path('data/localStorage.db'))
         self.meetings_local_data_source = MeetingLocalDataSource(self.meetings_db)
-        self.meetings_repo = MeetingRepository(self.meetings_local_data_source)
+        self.notifications_local_data_source = NotificationLocalDataSource(
+            self.parent_folder / Path("data/notification_shelf.db"))
+
+        if not getattr(sys, 'frozen', False):
+            exe_path = f"\"{os.path.join(os.path.dirname(sys.executable), 'pythonw.exe')}\""
+            script_path = f"{self.parent_folder / Path('main.py')}"
+            script_folder = f"{os.path.dirname(script_path)}"
+            script_path = f"\"{script_path}\""
+        else:
+            exe_path = sys.executable
+            script_path = None
+            script_folder = self.parent_folder
+
+        self.task_scheduler = TaskScheduler(exe_path, script_folder, script_path)
+
+        self.notification_repo = NotificationRepository(
+            self.notifications_local_data_source,
+            self.task_scheduler,
+            datetime.timedelta(minutes=1)
+        )
+        self.meetings_repo = MeetingRepository(self.meetings_local_data_source, self.notification_repo)
 
         # Создание заглушек встреч (убрать на релизе)
         res = self.meetings_local_data_source.get_meetings()
@@ -59,7 +82,7 @@ class Dependencies:
     def test_db_init(self):
         print("Создаю заглушки встреч...")
         today = datetime.datetime.now()
-        today_meet = (today + datetime.timedelta(hours=1))
+        today_meet = (today + datetime.timedelta(minutes=2))
         tomorrow_meet = today + datetime.timedelta(days=1)
         after_tomorrow_meet = today + datetime.timedelta(days=2)
 

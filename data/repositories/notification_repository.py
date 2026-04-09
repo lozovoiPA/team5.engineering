@@ -1,0 +1,94 @@
+import traceback
+from datetime import datetime, timedelta
+
+from data.data_sources.notification_local_data_source import NotificationLocalDataSource
+from data.entities.meeting import Meeting
+from data.entities.notification import Notification
+from services.notification.task_scheduler import TaskScheduler
+from services.result import ErrorResult, TaskSchedulerSuccess
+
+
+class NotificationRepository:
+    def __init__(self, notifications_local: NotificationLocalDataSource, scheduler: TaskScheduler,
+                 notification_prefs: timedelta):
+        self.notifications_local = notifications_local
+
+        self.scheduler = scheduler
+        self.notification_prefs: timedelta = notification_prefs
+
+    def meeting_to_notif_brief(self, meeting: Meeting):
+        notification = Notification()
+        notification.task_name = f"m_{meeting.id}"
+        notification.title = f"{meeting.title}"
+        notification.message = f"Встреча скоро начнется"
+        notification.meeting_id = meeting.id
+        notification.timestamp = datetime.strptime(meeting.date + ' ' + meeting.time,
+                                                   '%d.%m.%Y %H:%M') - self.notification_prefs
+        return notification
+
+    def get_notification(self, notif_name):
+        return self.notifications_local.get_notification(notif_name)
+
+    def remove_notification_by_name(self, notif_name):
+        try:
+            self.scheduler.cancel_task(f"{notif_name}")
+        except Exception as e:
+            error_text = f'''
+                Error in NotificationWorker.remove_notification():
+                {e}
+            '''
+            return ErrorResult(error_text)
+
+        result = self.notifications_local.remove_notification(f"{notif_name}")
+        if not isinstance(result, ErrorResult):
+            result = TaskSchedulerSuccess()
+        return result
+
+    def remove_notification(self, meeting: Meeting):
+        return self.remove_notification_by_name(f"m_{meeting.id}")
+
+    def update_notification(self, meeting: Meeting):
+        try:
+            notification = self.notifications_local.get_notification(f"m_{meeting.id}")
+        except Exception as e:
+            error_text = f'''
+                            Error in NotificationWorker.update_notification():
+                            {e}
+                        '''
+            return ErrorResult(error_text)
+
+        try:
+            meeting_timestamp = datetime.strptime(meeting.date + ' ' + meeting.time,
+                                                  '%d.%m.%Y %H:%M')
+            notification_time = meeting_timestamp - self.notification_prefs
+            flag = True
+            if notification.timestamp != notification_time:
+                flag = self.scheduler.postpone_task(f"m_{meeting.id}", notification_time)
+            self.notifications_local.set_notification(notification)
+            return TaskSchedulerSuccess() if flag else ErrorResult('Meeting notification was not updated')
+        except Exception as e:
+            error_text = f'''
+                            Error in NotificationWorker.update_notification():
+                            {e}
+                        '''
+            return ErrorResult(error_text)
+
+    def plan_meeting_notification(self, meeting: Meeting):
+        notification = self.meeting_to_notif_brief(meeting)
+        script_args = f"--send-notif \"{notification.task_name}\""
+
+        try:
+            self.scheduler.create_notification_task(
+                notification.task_name,
+                notification.timestamp,
+                script_args
+            )
+            self.notifications_local.set_notification(notification)
+            return TaskSchedulerSuccess()
+        except Exception as e:
+            error_text = f'''
+                Error in NotificationWorker.plan_meeting_notification():
+                {e}
+            '''
+            print(error_text, traceback.format_exc())
+            return ErrorResult(error_text)

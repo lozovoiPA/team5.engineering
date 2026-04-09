@@ -1,9 +1,19 @@
+import os
+
 from ui.views import MainWindow
 from ui.views import MeetingWindow
 
 import customtkinter as ctk
 
 from ui.views.loader import CircularLoader
+
+from pystray import Icon as TrayIcon, MenuItem as item
+from PIL import Image, ImageDraw
+
+
+def create_image():
+    image = Image.new('RGB', (64, 64), color='blue')
+    return image
 
 
 def center_window(top: ctk.CTkToplevel, window_width=None, window_height=None):
@@ -18,19 +28,44 @@ def center_window(top: ctk.CTkToplevel, window_width=None, window_height=None):
 
     top.geometry(f'{window_width}x{window_height}+{center_x}+{center_y}')
 
+
 class UiWorker:
-    def __init__(self, root, dependencies):
+    def __init__(self, root, dependencies, on_shutdown):
         self.root = root
         self.dependencies = dependencies
         self.main_window = None
         self.loading_toplevel = None
+        self.on_shutdown = on_shutdown
+
+        self.tray_icon_image = create_image()
+        self.tray_menu = (item('Show', self._show_window, default=True), item('Quit', self._quit_window))
+        self.tray_icon = TrayIcon("name", self.tray_icon_image, "Smartmeet", self.tray_menu)
+
+    def minimize(self):
+        self.main_window.withdraw()
+        self.tray_menu = (item('Show', self._show_window, default=True), item('Quit', self._quit_window))
+        self.tray_icon = TrayIcon("name", self.tray_icon_image, "Smartmeet", self.tray_menu)
+        self.tray_icon.run()
 
     def show_main_window(self):
-        self.main_window = MainWindow(self.root, self.dependencies.meetings_repo, on_close=self._close_main_window)
-        # self.main_window.deiconify()
+        if self.main_window is None:
+            self.main_window = MainWindow(self.root, self.dependencies.meetings_repo, on_close=self.close_main_window)
+            self.main_window.protocol('WM_DELETE_WINDOW', self.minimize)
+        else:
+            self.main_window.deiconify()
         return self.main_window
 
-    def _close_main_window(self):
+    def _quit_window(self, icon, item):
+        self.tray_icon.visible = False
+        self.tray_icon.stop()
+        self.close_main_window()
+        self.root.after(30, self.on_shutdown(None, None))
+
+    def _show_window(self, icon, item):
+        self.tray_icon.stop()
+        self.show_main_window()
+
+    def close_main_window(self):
         self.main_window.destroy()
         self.main_window = None
 
