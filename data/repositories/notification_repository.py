@@ -82,6 +82,14 @@ class NotificationRepository:
 
     def plan_meeting_notification(self, meeting: Meeting):
         notification = self.meeting_to_notif(meeting)
+        meeting_timestamp = datetime.strptime(meeting.date + ' ' + meeting.time,
+                                              '%d.%m.%Y %H:%M')
+        notification_time = meeting_timestamp - self.notification_prefs.notif_delta
+
+        now_time = datetime.now().replace(second=0, microsecond=0)
+        if now_time > notification_time:
+            notification.timestamp = now_time + timedelta(minutes=1)
+
         script_args = f"--send-notif \"{notification.task_name}\""
 
         try:

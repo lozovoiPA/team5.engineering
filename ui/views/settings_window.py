@@ -7,7 +7,7 @@ from prefs import CollisionPrefs, NotificationPrefs
 
 
 class SettingsWindow(ctk.CTkToplevel):
-    def __init__(self, parent, collision_prefs: CollisionPrefs, notif_prefs: NotificationPrefs):
+    def __init__(self, parent, collision_prefs: CollisionPrefs, notif_prefs: NotificationPrefs, on_save=None, on_cancel=None):
         super().__init__(parent)
 
         self.reminder_options = {
@@ -25,6 +25,9 @@ class SettingsWindow(ctk.CTkToplevel):
         self.title("Настройки")
         self.geometry("500x500")
         self.resizable(False, False)
+
+        self.on_save = on_save
+        self.on_cancel = on_cancel
 
         self._build_ui()
 
@@ -179,4 +182,7 @@ class SettingsWindow(ctk.CTkToplevel):
             self.collision_prefs.save()
             self.notif_prefs.save()
 
+            if self.on_save is not None:
+                self.on_save()
+            
             self.destroy()

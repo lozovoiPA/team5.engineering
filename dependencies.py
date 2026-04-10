@@ -84,7 +84,7 @@ class Dependencies:
         if notif_prefs_dict is not None:
             self.notification_prefs.open(notif_prefs_dict)
 
-        self.notification_repo = NotificationRepository(
+        self.notification_repo: NotificationRepository = NotificationRepository(
             self.notifications_local_data_source,
             self.task_scheduler,
             self.notification_prefs

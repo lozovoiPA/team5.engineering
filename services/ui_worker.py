@@ -36,7 +36,7 @@ class UiWorker:
     def __init__(self, root, dependencies, on_shutdown):
         self.root = root
         self.dependencies = dependencies
-        self.main_window = None
+        self.main_window: MainWindow = None
         self.loading_toplevel = None
         self.on_shutdown = on_shutdown
 
@@ -134,12 +134,21 @@ class UiWorker:
         MeetingWindow(parent, repository=self.dependencies.meetings_repo, on_save=on_save)
 
     def show_settings_window(self):
-        swnd = SettingsWindow(self.root, self.dependencies.collision_prefs, self.dependencies.notification_prefs)
-        swnd.attributes('-topmost', True)
-        swnd.attributes('-topmost', False)
-        swnd.transient(self.main_window)
-        swnd.grab_set()
-        swnd.focus_set()
+        if self.main_window.winfo_exists() and self.main_window.winfo_viewable():
+
+            def on_save():
+                meetings = self.main_window.meetings
+                for m in meetings:
+                    self.dependencies.notification_repo.update_notification(m)
+
+            swnd = SettingsWindow(self.root, self.dependencies.collision_prefs, self.dependencies.notification_prefs, on_save=on_save)
+            swnd.attributes('-topmost', True)
+            swnd.attributes('-topmost', False)
+            swnd.transient(self.main_window)
+            swnd.grab_set()
+            swnd.focus_set()
+
+
 
     def show_meeting_info_window(self, meeting, on_close):
         center_window(MeetingInfoWindow(self.root, meeting, on_close), 450, 400)
