@@ -27,6 +27,16 @@ class NotificationRepository:
                                                    '%d.%m.%Y %H:%M') - self.notification_prefs.notif_delta
         return notification
 
+    def ensure_time(self, meeting: Meeting):
+        meeting_timestamp = datetime.strptime(meeting.date + ' ' + meeting.time,
+                                              '%d.%m.%Y %H:%M')
+        notification_time = meeting_timestamp - self.notification_prefs.notif_delta
+
+        now_time = datetime.now().replace(second=0, microsecond=0)
+        if now_time > notification_time:
+            notification_time = now_time + timedelta(minutes=1)
+        return notification_time
+
     def get_notification(self, notif_name):
         return self.notifications_local.get_notification(notif_name)
 
@@ -59,13 +69,7 @@ class NotificationRepository:
             return ErrorResult(error_text)
 
         try:
-            meeting_timestamp = datetime.strptime(meeting.date + ' ' + meeting.time,
-                                                  '%d.%m.%Y %H:%M')
-            notification_time = meeting_timestamp - self.notification_prefs.notif_delta
-
-            now_time = datetime.now().replace(second=0, microsecond=0)
-            if now_time > notification_time:
-                notification_time = now_time + timedelta(minutes=1)
+            notification_time = self.ensure_time(meeting)
 
             flag = True
             if notification.timestamp != notification_time:
@@ -82,13 +86,7 @@ class NotificationRepository:
 
     def plan_meeting_notification(self, meeting: Meeting):
         notification = self.meeting_to_notif(meeting)
-        meeting_timestamp = datetime.strptime(meeting.date + ' ' + meeting.time,
-                                              '%d.%m.%Y %H:%M')
-        notification_time = meeting_timestamp - self.notification_prefs.notif_delta
-
-        now_time = datetime.now().replace(second=0, microsecond=0)
-        if now_time > notification_time:
-            notification.timestamp = now_time + timedelta(minutes=1)
+        notification.timestamp = self.ensure_time(meeting)
 
         script_args = f"--send-notif \"{notification.task_name}\""
 
