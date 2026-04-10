@@ -26,7 +26,7 @@ class App:
         signal.signal(signal.SIGINT, self.shutdown)
 
         self.dependencies = Dependencies()
-        self.ui_worker = UiWorker(self.root, self.dependencies, self.shutdown)
+        self.ui_worker = UiWorker(self.root, self.dependencies, lambda: self.shutdown(None, None))
         self.notif_worker = NotificationWorker(self.dependencies)
         self.text_listener = ScreenTextListener()
 
@@ -45,7 +45,8 @@ class App:
         print("App is shutting down (received SIGINT). Exiting...")
 
         self.text_listener.stop()
-        self.root.destroy()
+        # self.root.destroy()
+        # self.root.quit()
         os._exit(0)
         # sys.exit(0)
 

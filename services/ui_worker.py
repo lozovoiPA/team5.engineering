@@ -44,11 +44,15 @@ class UiWorker:
         self.tray_menu = (item('Show', self._show_window, default=True), item('Quit', self._quit_window))
         self.tray_icon = TrayIcon("name", self.tray_icon_image, "Smartmeet", self.tray_menu)
 
-    def minimize(self):
-        self.main_window.withdraw()
+    def recreate_tray(self):
+        self.tray_icon.stop()
         self.tray_menu = (item('Show', self._show_window, default=True), item('Quit', self._quit_window))
         self.tray_icon = TrayIcon("name", self.tray_icon_image, "Smartmeet", self.tray_menu)
-        self.tray_icon.run()
+        self.tray_icon.run_detached()
+
+    def minimize(self):
+        self.main_window.withdraw()
+        self.recreate_tray()
 
     def show_main_window(self):
         if self.main_window is None:
@@ -58,6 +62,7 @@ class UiWorker:
                 on_close=self.minimize,
                 on_settings=self.show_settings_window
             )
+            self.recreate_tray()
         else:
             self.main_window.deiconify()
         return self.main_window
@@ -65,11 +70,14 @@ class UiWorker:
     def _quit_window(self, icon, item):
         self.tray_icon.visible = False
         self.tray_icon.stop()
-        self.close_main_window()
-        self.root.after(30, self.on_shutdown(None, None))
+        if self.main_window.winfo_exists():
+            if self.main_window.winfo_viewable():
+                self.main_window.withdraw()
+            # self.close_main_window()
+        self.on_shutdown()
 
     def _show_window(self, icon, item):
-        self.tray_icon.stop()
+        # self.tray_icon.stop()
         self.show_main_window()
 
     def close_main_window(self):
@@ -79,12 +87,18 @@ class UiWorker:
     def start_loading(self):
         if self.loading_toplevel is not None:
             self.loading_toplevel.destroy()
-        self.loading_toplevel = ctk.CTkToplevel()
-        center_window(self.loading_toplevel, 300, 90)
+        self.loading_toplevel = ctk.CTkToplevel(self.root)
+        center_window(self.loading_toplevel, 400, 90)
         self.loading_toplevel.resizable(False, False)
 
         # self.loading_toplevel.protocol("WM_DELETE_WINDOW", lambda: print("Loading window cannot be closed"))
         self.loading_toplevel.overrideredirect(True)
+
+        self.loading_toplevel.attributes('-topmost', True)
+        self.loading_toplevel.attributes('-topmost', False)
+        self.loading_toplevel.transient(self.main_window if self.main_window is not None and self.main_window.winfo_viewable() else self.root)
+        self.loading_toplevel.grab_set()
+        self.loading_toplevel.focus_set()
 
         wait_tip = ctk.CTkLabel(self.loading_toplevel, text=f"Подождите...ваш запрос обрабатывается...", text_color="#555555", font=ctk.CTkFont(size=14))
         wait_tip.pack(expand=True)

@@ -36,7 +36,7 @@ class MeetingWindow(ctk.CTkToplevel):
 
         self.geometry("460x480")
         self.resizable(False, False)
-        self.grab_set()
+        # self.grab_set()
 
         self._build_ui()
 
