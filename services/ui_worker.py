@@ -11,6 +11,7 @@ from pystray import Icon as TrayIcon, MenuItem as item
 from PIL import Image, ImageDraw
 
 from ui.views.meeting_info_window import MeetingInfoWindow
+from ui.views.settings_window import SettingsWindow
 
 
 def create_image():
@@ -51,8 +52,12 @@ class UiWorker:
 
     def show_main_window(self):
         if self.main_window is None:
-            self.main_window = MainWindow(self.root, self.dependencies.meetings_repo, on_close=self.close_main_window)
-            self.main_window.protocol('WM_DELETE_WINDOW', self.minimize)
+            self.main_window = MainWindow(
+                self.root,
+                self.dependencies.meetings_repo,
+                on_close=self.minimize,
+                on_settings=self.show_settings_window
+            )
         else:
             self.main_window.deiconify()
         return self.main_window
@@ -112,6 +117,14 @@ class UiWorker:
             parent = self.root
             on_save = None
         MeetingWindow(parent, repository=self.dependencies.meetings_repo, on_save=on_save)
+
+    def show_settings_window(self):
+        swnd = SettingsWindow(self.root, self.dependencies.collision_prefs, self.dependencies.notification_prefs)
+        swnd.attributes('-topmost', True)
+        swnd.attributes('-topmost', False)
+        swnd.transient(self.main_window)
+        swnd.grab_set()
+        swnd.focus_set()
 
     def show_meeting_info_window(self, meeting, on_close):
         center_window(MeetingInfoWindow(self.root, meeting, on_close), 450, 400)

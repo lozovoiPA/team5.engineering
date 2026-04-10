@@ -18,6 +18,18 @@ from services.notification.task_scheduler import TaskScheduler
 from services.result import MeetingsRetrieved
 
 
+class CollisionPrefs:
+    def __init__(self):
+        self.collision_window: datetime.timedelta = datetime.timedelta(minutes=30)
+
+
+class NotificationPrefs:
+    def __init__(self):
+        self.first_notif_delta: datetime.timedelta = datetime.timedelta(hours=1)
+        self.second_notif_delta: datetime.timedelta = datetime.timedelta(minutes=10)
+        self.short_notif: bool = True
+
+
 def resource_path(relative_path):
     try:
         base_path = sys._MEIPASS
@@ -64,6 +76,9 @@ class Dependencies:
             datetime.timedelta(minutes=1)
         )
         self.meetings_repo = MeetingRepository(self.meetings_local_data_source, self.notification_repo)
+
+        self.collision_prefs = CollisionPrefs()
+        self.notification_prefs = NotificationPrefs()
 
         # Создание заглушек встреч (убрать на релизе)
         res = self.meetings_local_data_source.get_meetings()
