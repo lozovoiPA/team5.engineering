@@ -20,16 +20,7 @@ if __name__ == "__main__":
         app.launch()
     else:
         if sys.argv[1] == "--send-notif" and len(sys.argv) == 3:
-
-            def shutdown():
-                app.shutdown(None, None)
-
-            def background_work():
-                app.notif_worker.send_notification(sys.argv[2],
-                                                   lambda args: app.root.after(0, shutdown),
-                                                   lambda args: app.root.after(0, shutdown)
-                                                   )
-            threading.Thread(target=background_work).start()
+            app.handle_notification(sys.argv[2])
 
     app.root.after(100, lambda: None)
     app.root.mainloop()

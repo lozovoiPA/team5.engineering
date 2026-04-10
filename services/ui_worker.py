@@ -10,6 +10,8 @@ from ui.views.loader import CircularLoader
 from pystray import Icon as TrayIcon, MenuItem as item
 from PIL import Image, ImageDraw
 
+from ui.views.meeting_info_window import MeetingInfoWindow
+
 
 def create_image():
     image = Image.new('RGB', (64, 64), color='blue')
@@ -110,3 +112,6 @@ class UiWorker:
             parent = self.root
             on_save = None
         MeetingWindow(parent, repository=self.dependencies.meetings_repo, on_save=on_save)
+
+    def show_meeting_info_window(self, meeting, on_close):
+        center_window(MeetingInfoWindow(self.root, meeting, on_close), 450, 400)

@@ -4,7 +4,9 @@ import sys
 
 import customtkinter as ctk
 
+from data.entities.notification import Notification
 from services.notification.notification_worker import NotificationWorker
+from services.result import MeetingsRetrieved
 from services.screen_text_listener import ScreenTextListener
 from services.ui_worker import UiWorker
 from services.model_worker import ModelWorker
@@ -46,6 +48,28 @@ class App:
         self.root.destroy()
         os._exit(0)
         # sys.exit(0)
+
+    def handle_notification(self, notif_name):
+        notification = self.dependencies.notification_repo.get_notification(notif_name)
+        if not isinstance(notification, Notification):
+            self.shutdown(None, None)
+
+        else:
+            def background_work():
+                self.notif_worker.send_notification(
+                    notification,
+                    lambda args: self.root.after(0, lambda: self.show_meeting_info(notification)),
+                    lambda args: self.root.after(0, lambda: self.shutdown(None, None))
+                )
+            threading.Thread(target=background_work).start()
+
+    def show_meeting_info(self, notification: Notification):
+        meeting = self.dependencies.meetings_repo.get_meeting(notification.meeting_id)
+        if isinstance(meeting, MeetingsRetrieved):
+            meeting = meeting.meetings[0]
+            self.ui_worker.show_meeting_info_window(meeting, lambda: self.shutdown(None, None))
+        else:
+            self.shutdown(None, None)
 
     def catch_text_from_daemon(self, text):
         self.root.after(0, lambda: self.create_meeting_from_text(text))

@@ -54,6 +54,23 @@ class MeetingLocalDataSource:
             {e}
             ''')
 
+    def get_meeting(self, meeting_id):
+        def query(session):
+            meeting_db = session.get(MeetingDb, meeting_id)
+            if meeting_db is None:
+                return ErrorResult("Meeting not found")
+            _meeting = meeting_from_db(meeting_db)
+            return _meeting
+
+        try:
+            meeting = self.db.execute_query(query)
+            return MeetingsRetrieved([meeting])
+        except Exception as e:
+            return ErrorResult(f'''
+            Exception in MeetingLocalDataSource.get_meeting();
+            {e}
+            ''')
+
     def get_meetings(self):
         def query(session):
             _meetings = [meeting_from_db(meeting) for meeting in session.scalars(select(MeetingDb)).all()]

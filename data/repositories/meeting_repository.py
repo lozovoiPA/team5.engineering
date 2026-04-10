@@ -27,6 +27,10 @@ class MeetingRepository:
         result = self.meetings_local.get_meetings()
         return result
 
+    def get_meeting(self, meeting_id):
+        result = self.meetings_local.get_meeting(meeting_id)
+        return result
+
     def delete_meeting(self, meeting):
         result = self.meetings_local.delete_meeting(meeting)
         if isinstance(result, MeetingsDeleted):
