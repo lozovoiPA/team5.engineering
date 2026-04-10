@@ -4,26 +4,27 @@ from datetime import datetime, timedelta
 from data.data_sources.notification_local_data_source import NotificationLocalDataSource
 from data.entities.meeting import Meeting
 from data.entities.notification import Notification
+from prefs import NotificationPrefs
 from services.notification.task_scheduler import TaskScheduler
 from services.result import ErrorResult, TaskSchedulerSuccess
 
 
 class NotificationRepository:
     def __init__(self, notifications_local: NotificationLocalDataSource, scheduler: TaskScheduler,
-                 notification_prefs: timedelta):
+                 notification_prefs: NotificationPrefs):
         self.notifications_local = notifications_local
 
         self.scheduler = scheduler
-        self.notification_prefs: timedelta = notification_prefs
+        self.notification_prefs = notification_prefs
 
-    def meeting_to_notif_brief(self, meeting: Meeting):
+    def meeting_to_notif(self, meeting: Meeting, delta: timedelta):
         notification = Notification()
         notification.task_name = f"m_{meeting.id}"
         notification.title = f"{meeting.title}"
-        notification.message = f"Встреча скоро начнется"
+        notification.message = f"Начнется в {meeting.time} {meeting.date}" if self.notification_prefs.short_notif else f"Встреча скоро начнется!\n{meeting.description}. Приходите к {meeting.time} {meeting.date}"
         notification.meeting_id = meeting.id
         notification.timestamp = datetime.strptime(meeting.date + ' ' + meeting.time,
-                                                   '%d.%m.%Y %H:%M') - self.notification_prefs
+                                                   '%d.%m.%Y %H:%M') - delta
         return notification
 
     def get_notification(self, notif_name):
@@ -60,7 +61,7 @@ class NotificationRepository:
         try:
             meeting_timestamp = datetime.strptime(meeting.date + ' ' + meeting.time,
                                                   '%d.%m.%Y %H:%M')
-            notification_time = meeting_timestamp - self.notification_prefs
+            notification_time = meeting_timestamp - self.notification_prefs.notif_delta
             flag = True
             if notification.timestamp != notification_time:
                 flag = self.scheduler.postpone_task(f"m_{meeting.id}", notification_time)
@@ -74,7 +75,7 @@ class NotificationRepository:
             return ErrorResult(error_text)
 
     def plan_meeting_notification(self, meeting: Meeting):
-        notification = self.meeting_to_notif_brief(meeting)
+        notification = self.meeting_to_notif(meeting, self.notification_prefs.notif_delta)
         script_args = f"--send-notif \"{notification.task_name}\""
 
         try:

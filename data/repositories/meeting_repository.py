@@ -1,6 +1,6 @@
 import datetime
-from datetime import timedelta
 
+from prefs import CollisionPrefs
 from services.result import MeetingsCreated, MeetingsUpdated, MeetingsDeleted
 from .notification_repository import NotificationRepository
 from ..data_sources.meeting_local_data_source import MeetingLocalDataSource
@@ -8,9 +8,10 @@ from ..entities.meeting import Meeting
 
 
 class MeetingRepository:
-    def __init__(self, meetings_local: MeetingLocalDataSource, notif_repo: NotificationRepository):
+    def __init__(self, meetings_local: MeetingLocalDataSource, notif_repo: NotificationRepository, collision_prefs: CollisionPrefs):
         self.meetings_local = meetings_local
         self.notif_repo = notif_repo
+        self.collision_prefs = collision_prefs
 
     def save_meeting(self, meeting: Meeting):
         if meeting.id is not None:
@@ -37,8 +38,8 @@ class MeetingRepository:
             notif_result = self.notif_repo.remove_notification(meeting)
         return result
 
-    def check_collision(self, meeting: Meeting, delta: timedelta):
+    def check_collision(self, meeting: Meeting):
         timestamp = datetime.datetime.strptime(meeting.date + ' ' + meeting.time, '%d.%m.%Y %H:%M')
-        result = self.meetings_local.check_collisions(meeting, timestamp, delta)
+        result = self.meetings_local.check_collisions(meeting, timestamp, self.collision_prefs.collision_window)
 
         return result

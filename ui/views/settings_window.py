@@ -3,19 +3,17 @@ from tkinter import messagebox
 import customtkinter as ctk
 from datetime import timedelta
 
-from dependencies import CollisionPrefs, NotificationPrefs
+from prefs import CollisionPrefs, NotificationPrefs
 
 
 class SettingsWindow(ctk.CTkToplevel):
     def __init__(self, parent, collision_prefs: CollisionPrefs, notif_prefs: NotificationPrefs):
         super().__init__(parent)
 
-        self.first_reminder_options = {
+        self.reminder_options = {
             "За 1 час": timedelta(hours=1),
             "За 40 минут": timedelta(minutes=40),
-            "За 30 минут": timedelta(minutes=30)
-        }
-        self.second_reminder_options = {
+            "За 30 минут": timedelta(minutes=30),
             "За 15 минут": timedelta(minutes=15),
             "За 10 минут": timedelta(minutes=10),
             "За 5 минут": timedelta(minutes=5)
@@ -25,7 +23,7 @@ class SettingsWindow(ctk.CTkToplevel):
         self.notif_prefs = notif_prefs
 
         self.title("Настройки")
-        self.geometry("500x550")
+        self.geometry("500x500")
         self.resizable(False, False)
 
         self._build_ui()
@@ -55,7 +53,8 @@ class SettingsWindow(ctk.CTkToplevel):
             placeholder_text="30"
         )
         self.collision_entry.pack(side="left", padx=(0, 5))
-        self.collision_entry.insert(0, "30")
+        delta, values = self.collision_prefs.get_delta_value()
+        self.collision_entry.insert(0, f"{delta}")
 
         self.collision_unit = ctk.CTkOptionMenu(
             time_input_frame,
@@ -65,6 +64,7 @@ class SettingsWindow(ctk.CTkToplevel):
             font=ctk.CTkFont(size=14)
         )
         self.collision_unit.pack(side="left")
+        self.collision_unit.set("минут" if values == "mins" else "часов")
 
         hint_label = ctk.CTkLabel(
             collision_frame,
@@ -82,40 +82,21 @@ class SettingsWindow(ctk.CTkToplevel):
 
         first_reminder_label = ctk.CTkLabel(
             first_reminder_frame,
-            text="Первое напоминание:",
+            text="Напоминание:",
             font=ctk.CTkFont(size=14)
         )
         first_reminder_label.grid(row=0, column=0, padx=(0, 10), pady=5, sticky="w")
 
         self.first_reminder_combo = ctk.CTkOptionMenu(
             first_reminder_frame,
-            values=list(self.first_reminder_options.keys()),
+            values=list(self.reminder_options.keys()),
             width=150,
             height=35,
             font=ctk.CTkFont(size=14)
         )
         self.first_reminder_combo.grid(row=0, column=1, pady=5, sticky="w")
-        self.first_reminder_combo.set("За 1 час")
-
-        second_reminder_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        second_reminder_frame.pack(fill="x", padx=20, pady=10)
-
-        second_reminder_label = ctk.CTkLabel(
-            second_reminder_frame,
-            text="Второе напоминание:",
-            font=ctk.CTkFont(size=14)
-        )
-        second_reminder_label.grid(row=0, column=0, padx=(0, 10), pady=5, sticky="w")
-
-        self.second_reminder_combo = ctk.CTkOptionMenu(
-            second_reminder_frame,
-            values=list(self.second_reminder_options.keys()),
-            width=150,
-            height=35,
-            font=ctk.CTkFont(size=14)
-        )
-        self.second_reminder_combo.grid(row=0, column=1, pady=5, sticky="w")
-        self.second_reminder_combo.set("За 10 минут")
+        key = next((k for k, v in self.reminder_options.items() if v == self.notif_prefs.notif_delta), None)
+        self.first_reminder_combo.set("За 1 час" if key is None else key)
 
         separator2 = ctk.CTkFrame(main_frame, height=2, fg_color="gray")
         separator2.pack(fill="x", padx=20, pady=15)
@@ -129,6 +110,8 @@ class SettingsWindow(ctk.CTkToplevel):
             corner_radius=6
         )
         self.detailed_notifications.pack(pady=15)
+        if not self.notif_prefs.short_notif:
+            self.detailed_notifications.select()
 
         checkbox_hint = ctk.CTkLabel(
             main_frame,
@@ -182,15 +165,18 @@ class SettingsWindow(ctk.CTkToplevel):
                 return False
             return delta
         except ValueError:
-            messagebox.showwarning("Ошибка", "Коллизия встреч указана неправильно.\nВведите значение от 20 минут до 24 часов.")
+            messagebox.showwarning("Ошибка",
+                                   "Коллизия встреч указана неправильно.\nВведите значение от 20 минут до 24 часов.")
             return False
 
     def save_settings(self):
         delta = self.get_collision_window_timedelta()
         if isinstance(delta, timedelta):
             self.collision_prefs.collision_window = delta
-            self.notif_prefs.first_notif_delta = self.first_reminder_options[self.first_reminder_combo.get()]
-            self.notif_prefs.second_notif_delta = self.second_reminder_options[self.second_reminder_combo.get()]
-            self.notif_prefs.short_notif = self.detailed_notifications.get()
+            self.notif_prefs.notif_delta = self.reminder_options[self.first_reminder_combo.get()]
+            self.notif_prefs.short_notif = False if self.detailed_notifications.get() == 1 else True
+
+            self.collision_prefs.save()
+            self.notif_prefs.save()
 
             self.destroy()

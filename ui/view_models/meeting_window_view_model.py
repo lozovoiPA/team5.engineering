@@ -23,8 +23,7 @@ class MeetingWindowViewModel:
         pass
 
     def check_collisions(self):
-        delta = timedelta(hours=1)
-        result = self.repository.check_collision(self.meeting, delta)
+        result = self.repository.check_collision(self.meeting)
 
         print("MeetingWindowViewModel.check_collision() started...")
         if isinstance(result, MeetingsRetrieved):

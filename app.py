@@ -55,21 +55,31 @@ class App:
             self.shutdown(None, None)
 
         else:
+            def click_notif(args):
+                self.show_meeting_info(notification, lambda: close_notif(args))
+
+            def close_notif(args):
+                self.dependencies.notification_repo.remove_notification_by_name(notif_name)
+                self.shutdown(None, None)
+
             def background_work():
-                self.notif_worker.send_notification(
-                    notification,
-                    lambda args: self.root.after(0, lambda: self.show_meeting_info(notification)),
-                    lambda args: self.root.after(0, lambda: self.shutdown(None, None))
-                )
+                try:
+                    self.notif_worker.send_notification(
+                        notification,
+                        lambda args: self.root.after(0, lambda: click_notif(args)),
+                        lambda args: self.root.after(0, lambda: close_notif(args))
+                    )
+                except Exception:
+                    self.shutdown(None, None)
             threading.Thread(target=background_work).start()
 
-    def show_meeting_info(self, notification: Notification):
+    def show_meeting_info(self, notification: Notification, on_close):
         meeting = self.dependencies.meetings_repo.get_meeting(notification.meeting_id)
         if isinstance(meeting, MeetingsRetrieved):
             meeting = meeting.meetings[0]
-            self.ui_worker.show_meeting_info_window(meeting, lambda: self.shutdown(None, None))
+            self.ui_worker.show_meeting_info_window(meeting, on_close)
         else:
-            self.shutdown(None, None)
+            on_close()
 
     def catch_text_from_daemon(self, text):
         self.root.after(0, lambda: self.create_meeting_from_text(text))

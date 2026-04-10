@@ -14,20 +14,9 @@ from data.entities.meeting import Meeting
 from data.meeting_database import MeetingDatabase
 from data.repositories.meeting_repository import MeetingRepository
 from data.repositories.notification_repository import NotificationRepository
+from prefs import CollisionPrefs, NotificationPrefs
 from services.notification.task_scheduler import TaskScheduler
 from services.result import MeetingsRetrieved
-
-
-class CollisionPrefs:
-    def __init__(self):
-        self.collision_window: datetime.timedelta = datetime.timedelta(minutes=30)
-
-
-class NotificationPrefs:
-    def __init__(self):
-        self.first_notif_delta: datetime.timedelta = datetime.timedelta(hours=1)
-        self.second_notif_delta: datetime.timedelta = datetime.timedelta(minutes=10)
-        self.short_notif: bool = True
 
 
 def resource_path(relative_path):
@@ -36,6 +25,16 @@ def resource_path(relative_path):
     except Exception:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
+
+
+def open_json(path):
+    data = None
+    try:
+        with open(path, 'r') as f:
+            data = json.load(f)
+        return data
+    except Exception:
+        return data
 
 
 class Dependencies:
@@ -70,22 +69,38 @@ class Dependencies:
 
         self.task_scheduler = TaskScheduler(exe_path, script_folder, script_path)
 
+        col_path = config_path / Path('collision_prefs.json')
+        notif_path = config_path / Path('notif_prefs.json')
+
+        self.collision_prefs = CollisionPrefs(col_path)
+        self.notification_prefs = NotificationPrefs(notif_path)
+
+        col_prefs_dict = open_json(col_path)
+        notif_prefs_dict = open_json(notif_path)
+
+        if col_prefs_dict is not None:
+            self.collision_prefs.open(col_prefs_dict)
+
+        if notif_prefs_dict is not None:
+            self.notification_prefs.open(notif_prefs_dict)
+
         self.notification_repo = NotificationRepository(
             self.notifications_local_data_source,
             self.task_scheduler,
-            datetime.timedelta(minutes=1)
+            self.notification_prefs
         )
-        self.meetings_repo = MeetingRepository(self.meetings_local_data_source, self.notification_repo)
+        self.meetings_repo = MeetingRepository(
+            self.meetings_local_data_source,
+            self.notification_repo,
+            self.collision_prefs
+        )
 
-        self.collision_prefs = CollisionPrefs()
-        self.notification_prefs = NotificationPrefs()
-
-        # Создание заглушек встреч (убрать на релизе)
-        res = self.meetings_local_data_source.get_meetings()
-        if isinstance(res, MeetingsRetrieved):
-            print(f"Найдено: {len(res.meetings)} встреч")
-            if len(res.meetings) <= 1:
-                self.test_db_init()
+        if not getattr(sys, 'frozen', False):
+            res = self.meetings_local_data_source.get_meetings()
+            if isinstance(res, MeetingsRetrieved):
+                print(f"Найдено: {len(res.meetings)} встреч")
+                if len(res.meetings) <= 1:
+                    self.test_db_init()
 
     def get_model(self):
         model = Model()
