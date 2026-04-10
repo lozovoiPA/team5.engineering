@@ -45,6 +45,7 @@ class UiWorker:
         self.tray_icon = TrayIcon("name", self.tray_icon_image, "Smartmeet", self.tray_menu)
 
     def recreate_tray(self):
+        self.tray_icon.visible = False
         self.tray_icon.stop()
         self.tray_menu = (item('Show', self._show_window, default=True), item('Quit', self._quit_window))
         self.tray_icon = TrayIcon("name", self.tray_icon_image, "Smartmeet", self.tray_menu)
@@ -62,9 +63,9 @@ class UiWorker:
                 on_close=self.minimize,
                 on_settings=self.show_settings_window
             )
-            self.recreate_tray()
         else:
             self.main_window.deiconify()
+        self.recreate_tray()
         return self.main_window
 
     def _quit_window(self, icon, item):

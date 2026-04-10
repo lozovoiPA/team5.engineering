@@ -26,7 +26,8 @@ class MainWindow(ctk.CTkToplevel):
         self.view_model = MainWindowViewModel(repository)
         self.loaders = []
 
-        self.on_auto_generate = lambda: print("Auto-generate clicked - use Alt+Shift+Z") if on_auto_generate is None else on_auto_generate
+        self.on_auto_generate = lambda: print(
+            "Auto-generate clicked - use Alt+Shift+Z") if on_auto_generate is None else on_auto_generate
         self.on_close = on_close
         self.on_settings = on_settings
 

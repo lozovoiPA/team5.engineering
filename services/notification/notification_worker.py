@@ -2,6 +2,7 @@ from win11toast import toast
 
 from data.entities.notification import Notification
 from dependencies import Dependencies
+from services.result import MeetingsRetrieved
 
 
 class NotificationWorker:
@@ -9,8 +10,10 @@ class NotificationWorker:
         self.dependencies = dependencies
 
     def send_notification(self, notification, on_click, on_dismissed):
-        toast(notification.title,
-              notification.message,
+        title = notification.title
+        message = notification.message
+        toast(title,
+              message,
               on_click=on_click,
               on_dismissed=on_dismissed
         )

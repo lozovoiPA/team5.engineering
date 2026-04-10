@@ -17,14 +17,14 @@ class NotificationRepository:
         self.scheduler = scheduler
         self.notification_prefs = notification_prefs
 
-    def meeting_to_notif(self, meeting: Meeting, delta: timedelta):
+    def meeting_to_notif(self, meeting: Meeting):
         notification = Notification()
         notification.task_name = f"m_{meeting.id}"
         notification.title = f"{meeting.title}"
         notification.message = f"Начнется в {meeting.time} {meeting.date}" if self.notification_prefs.short_notif else f"Встреча скоро начнется!\n{meeting.description}. Приходите к {meeting.time} {meeting.date}"
         notification.meeting_id = meeting.id
         notification.timestamp = datetime.strptime(meeting.date + ' ' + meeting.time,
-                                                   '%d.%m.%Y %H:%M') - delta
+                                                   '%d.%m.%Y %H:%M') - self.notification_prefs.notif_delta
         return notification
 
     def get_notification(self, notif_name):
@@ -62,9 +62,15 @@ class NotificationRepository:
             meeting_timestamp = datetime.strptime(meeting.date + ' ' + meeting.time,
                                                   '%d.%m.%Y %H:%M')
             notification_time = meeting_timestamp - self.notification_prefs.notif_delta
+
+            now_time = datetime.now().replace(second=0, microsecond=0)
+            if now_time > notification_time:
+                notification_time = now_time + timedelta(minutes=1)
+
             flag = True
             if notification.timestamp != notification_time:
                 flag = self.scheduler.postpone_task(f"m_{meeting.id}", notification_time)
+            notification = self.meeting_to_notif(meeting)
             self.notifications_local.set_notification(notification)
             return TaskSchedulerSuccess() if flag else ErrorResult('Meeting notification was not updated')
         except Exception as e:
@@ -75,7 +81,7 @@ class NotificationRepository:
             return ErrorResult(error_text)
 
     def plan_meeting_notification(self, meeting: Meeting):
-        notification = self.meeting_to_notif(meeting, self.notification_prefs.notif_delta)
+        notification = self.meeting_to_notif(meeting)
         script_args = f"--send-notif \"{notification.task_name}\""
 
         try:

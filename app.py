@@ -44,7 +44,13 @@ class App:
     def shutdown(self, signum, frame):
         print("App is shutting down (received SIGINT). Exiting...")
 
-        self.text_listener.stop()
+        try:
+            self.text_listener.stop()
+            if self.ui_worker.tray_icon.visible:
+                self.ui_worker.tray_icon.visible = False
+                self.ui_worker.tray_icon.stop()
+        except Exception:
+            print("Unknown exception")
         # self.root.destroy()
         # self.root.quit()
         os._exit(0)
