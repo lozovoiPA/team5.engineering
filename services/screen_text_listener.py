@@ -26,10 +26,11 @@ class ScreenTextListener:
 
         time.sleep(0.1)
         pyautogui.keyDown('ctrl')
-        time.sleep(0.05)
+        time.sleep(0.1)
         pyautogui.press('c')
-        time.sleep(0.05)
+        time.sleep(0.1)
         pyautogui.keyUp('ctrl')
+        time.sleep(0.1)
 
         selected_text = pyperclip.paste()
         print(f"Selected text length: {len(selected_text)}")
