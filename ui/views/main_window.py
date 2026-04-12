@@ -1,4 +1,3 @@
-import threading
 from idlelib.tooltip import Hovertip
 
 import customtkinter as ctk
@@ -7,12 +6,13 @@ from data.entities.meeting import Meeting
 from ui.view_models.main_window_view_model import MainWindowViewModel
 from ui.views.loader import CircularLoader
 from ui.views.meeting_window import MeetingWindow
+from ui.views.settings_window import SettingsWindow
 
 
 class MainWindow(ctk.CTkToplevel):
-    def __init__(self, root, repository, on_auto_generate=None):
+    def __init__(self, root, repository, on_auto_generate=None, on_close=None, on_settings=None):
         super().__init__(root)
-        self.title("Meeting Planner")
+        self.title("Smartmeet")
         self.geometry("860x620")
         self.minsize(720, 500)
 
@@ -26,7 +26,17 @@ class MainWindow(ctk.CTkToplevel):
         self.view_model = MainWindowViewModel(repository)
         self.loaders = []
 
-        self.on_auto_generate = on_auto_generate
+        self.on_auto_generate = lambda: print(
+            "Auto-generate clicked - use Alt+Shift+Z") if on_auto_generate is None else on_auto_generate
+        self.on_close = on_close
+        self.on_settings = on_settings
+
+        if on_close is None:
+            self.on_close = lambda: self.destroy()
+        if on_settings is None:
+            self.on_settings = lambda: print("Settings were pressed - no other action set")
+
+        self.protocol("WM_DELETE_WINDOW", on_close)
 
         self.view_model.get_meetings()
         self.meetings = self.view_model.meetings
@@ -61,7 +71,13 @@ class MainWindow(ctk.CTkToplevel):
         btn_container = ctk.CTkFrame(top_frame, fg_color="transparent")
         btn_container.pack(side="right", padx=20, pady=10)
 
-        ctk.CTkButton(btn_container, text="Auto-Generate  Alt+Shift+Z", width=200, height=36,
+        ctk.CTkButton(btn_container, text="Настройки", width=20, height=36,
+                      corner_radius=8, fg_color="white", text_color="black",
+                      border_width=2, border_color="gray", hover_color="#f0f0f0",
+                      command=self.on_settings) \
+            .pack(side="left", padx=(0, 12))
+
+        ctk.CTkButton(btn_container, text="Авто-генерация  Alt+Shift+Z", width=200, height=36,
                       corner_radius=8, fg_color="white", text_color="black",
                       border_width=2, border_color="gray", hover_color="#f0f0f0",
                       command=self._on_auto_generate) \
@@ -123,13 +139,13 @@ class MainWindow(ctk.CTkToplevel):
     def _open_meeting_window(self, meeting=None):
         MeetingWindow(self,
                       repository=self.view_model.repository,
-                      on_save=self._on_meeting_saved if meeting is None else self._on_meeting_edit,
+                      on_save=self.on_meeting_saved if meeting is None else self._on_meeting_edit,
                       prefill_meeting=meeting)
 
     def _on_meeting_edit(self, meeting: Meeting):
-        self._on_meeting_saved(meeting, creating=False)
+        self.on_meeting_saved(meeting, creating=False)
 
-    def _on_meeting_saved(self, meeting: Meeting, creating=True):
+    def on_meeting_saved(self, meeting: Meeting, creating=True):
         self._start_load(
             CircularLoader(self.meetings_frame, size=30, color="#1e90ff", bgcolor="#e0e0e0",
                            angle=self.view_model.loader_angle),
