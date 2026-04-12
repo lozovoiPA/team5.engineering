@@ -38,26 +38,24 @@ class PromptRouter:
 
 Верни только JSON.
 
-Обязательные поля:
-- meeting_date (в формате ISO YYYY-MM-DD)
-- meeting_time (в формате HH:MM)
-- topic
-- summary
+Если информация о встрече есть (указано время, или день (завтра, послезавтра, день недели), конкретная дата, предложение встретиться), верни:
+{{
+    "meeting_date": "YYYY-MM-DD",
+    "meeting_time": "HH:MM",
+    "topic": "название",
+    "summary": "описание"
+}}
+Информация о встрече в тексте может быть неполной, тогда заполни только те поля, которые могут быть определены из текста.
+Остальные заполни примерными значениями.
+
+Если в тексте НЕТ информации о встрече, верни:
+{{"error": "no_meeting_info"}}
 
 Правила времени:
-- "пол 1", "пол первого", "в половине первого" -> "12:30"
-- "пол 5", "пол пятого" -> "16:30"
-- "пол 9" -> "20:30"
-- "пол 8", "пол восьмого" -> "19:30"
+- "пол 1", "пол первого" -> "12:30"
+- "пол 5" -> "16:30"
 - "в 2 часа", "в два часа" -> "14:00"
-- "в 14" -> "14:00"
-- "вечером 7" -> "19:00"
-- "утром 9" -> "09:00"
-- Любое точное время "15:30" -> "15:30"
-- Если время совсем не понятно — "не указано"
-
-topic — максимально близко к словам пользователя.
-summary — коротко, 5–10 слов.
+- "через X часов" -> текущее время + X часов
 
 Без объяснений, только JSON."""
 
@@ -81,11 +79,17 @@ summary — коротко, 5–10 слов.
             )
 
             content = response.choices[0].message.content
-            return json.loads(content)
+            data = json.loads(content)
+            if data.get("error") == "no_meeting_info":
+                return results.ErrorResult("Модели не удалось определить информацию о встрече.\nСоздать встречу вручную?")
+            return data
 
         except Exception as e:
-            print(f"ExecutePrompt error: {e}")
-            return results.ErrorResult(str(e))
+            error_msg = str(e)
+            print(f"ExecutePrompt error: {error_msg}")
+            if "Connection error" in error_msg or "connect" in error_msg.lower():
+                return results.ErrorResult("Ошибка - не удается установить соединение.\nСоздать встречу вручную?")
+            return results.ErrorResult(f"Ошибка при обработке: {error_msg}.\nСоздать встречу вручную?")
 
     def execute_toolcall(self, toolcall, text):
         try:

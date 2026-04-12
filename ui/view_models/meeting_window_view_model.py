@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 from data.entities.meeting import Meeting
 from data.repositories.meeting_repository import MeetingRepository
@@ -21,6 +21,25 @@ class MeetingWindowViewModel:
             print(f"Unknown error in saving meeting.")
             return False
         pass
+
+    def is_valid_date(self, day, month, year):
+        try:
+            datetime(int(year), int(month), int(day))
+            return True
+        except Exception as e:
+            return False
+
+    def is_valid_time(self, time_str):
+        if not time_str or len(time_str) != 5:
+            return False
+        if time_str[2] != ':':
+            return False
+        try:
+            hours = int(time_str[:2])
+            minutes = int(time_str[3:])
+            return 0 <= hours <= 23 and 0 <= minutes <= 59
+        except Exception as e:
+            return False
 
     def check_collisions(self):
         result = self.repository.check_collision(self.meeting)

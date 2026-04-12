@@ -164,10 +164,44 @@ class MeetingWindow(ctk.CTkToplevel):
             messagebox.showwarning("Ошибка", "Введите название встречи")
             return
 
-        date_str = f"{self.dd.get().strip()}.{self.mm.get().strip()}.{self.yyyy.get().strip()}"
+        day = self.dd.get().strip()
+        month = self.mm.get().strip()
+        year = self.yyyy.get().strip()
+
+        if not day or not month or not year:
+            messagebox.showwarning("Ошибка", "Пустое поле в дата")
+            unblock_buttons()
+            return
+        if not (day.isdigit() and month.isdigit() and year.isdigit()):
+            messagebox.showwarning("Ошибка", "Дата должна содержать только цифры")
+            unblock_buttons()
+            return
+        if not self.view_model.is_valid_date(day, month, year):
+            messagebox.showwarning("Ошибка", "Некорректная дата.")
+            unblock_buttons()
+            return
+
+        date_str = f"{day}.{month}.{year}"
         date_obj = datetime.strptime(date_str, "%d.%m.%Y")
         date_str = date_obj.strftime("%d.%m.%Y")
         time_str = self.time_entry.get().strip()
+
+        if not time_str:
+            messagebox.showwarning("Ошибка", "Пустое поле в время")
+            unblock_buttons()
+            return
+        if not self.view_model.is_valid_time(time_str):
+            messagebox.showwarning("Ошибка", "Некорректное время.")
+            unblock_buttons()
+            return
+
+        now = datetime.now()
+        meeting_datetime = datetime.strptime(f"{date_str} {time_str}", "%d.%m.%Y %H:%M")
+
+        if meeting_datetime < now:
+            messagebox.showwarning("Ошибка", "Нельзя создать встречу для прошедшего времени")
+            unblock_buttons()
+            return
 
         self.meeting.title = title
         self.meeting.date = date_str
@@ -178,8 +212,17 @@ class MeetingWindow(ctk.CTkToplevel):
         # Если есть коллизия (окно - 1 час) - вывод в логи
         collision_meetings = self.view_model.check_collisions()
         if collision_meetings is not None:
-            messagebox.showwarning("Ошибка", "Обнаружены коллизии встреч, встреча не создана (пока).")
-            unblock_buttons()
+            text = "Обнаружены коллизии встреч:"
+            for m in collision_meetings:
+                text += f"\n{m.title} в {m.time}"
+            text += "\n\nВсе равно сохранить встречу?"
+            if messagebox.askyesno("Информация", text):
+                if self.view_model.save_meeting():
+                    if self.on_save is not None:
+                        self.on_save(self.meeting)
+                    self.destroy()
+            else:
+                unblock_buttons()
         else:
             if self.view_model.save_meeting():
                 if self.on_save is not None:

@@ -1,12 +1,13 @@
 import os
 import signal
 import sys
+from tkinter import messagebox
 
 import customtkinter as ctk
 
 from data.entities.notification import Notification
 from services.notification.notification_worker import NotificationWorker
-from services.result import MeetingsRetrieved
+from services.result import MeetingsRetrieved, ErrorResult
 from services.screen_text_listener import ScreenTextListener
 from services.ui_worker import UiWorker
 from services.model_worker import ModelWorker
@@ -98,6 +99,11 @@ class App:
 
         def update_ui_with_result(result):
             self.ui_worker.stop_loading()
+            if isinstance(result, ErrorResult):
+                if messagebox.askyesno("Информация", result.error_text):
+                    self.ui_worker.show_meeting_window()
+                return
+
             if isinstance(result, Meeting):
                 self.ui_worker.show_meeting_window_with_prefill(result)
             else:
