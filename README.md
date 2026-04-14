@@ -13,6 +13,7 @@
 ### Артефакты фаз
 - [Фаза 1](https://docs.google.com/document/d/1eRV8bLaSCGb0e4cF-7HdcH5fUBbV6i9Bf2lgD-a9ZRE/edit?usp=drive_link)
 - [Фаза 2](https://docs.google.com/document/d/1iw_UiGoXuy1w4bvtlXkA1M4i7AzlWdUK6zoAaw9La30/edit?usp=drive_link)
+- [Фаза 3](https://docs.google.com/document/d/1SiF5_AzQt0ld0_EosMX036aMkXzaasxI8lXJOkngkKc/edit?usp=sharing)
 
 ## Приложение
 В приложении реализованы сценарии:
